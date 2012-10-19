@@ -1,0 +1,56 @@
+#!/usr/bin/env zsh
+#
+# Jaro Web, your slick and static website publisher
+#
+# Copyleft (C) 2012 Denis Roio <jaromil@dyne.org>
+#
+# This source  code is free  software; you can redistribute  it and/or
+# modify it under the terms of  the GNU Public License as published by
+# the Free  Software Foundation; either  version 3 of the  License, or
+# (at your option) any later version.
+#
+# This source code is distributed in  the hope that it will be useful,
+# but  WITHOUT ANY  WARRANTY;  without even  the  implied warranty  of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+VERSION=0.1
+
+QUIET=0
+
+# standard output message routines
+# it's always useful to wrap them, in case we change behaviour later
+notice() { if [[ $QUIET == 0 ]]; then print "$fg_bold[green][*]$fg_no_bold[default] $1" >&2; fi }
+error()  { if [[ $QUIET == 0 ]]; then print "$fg[red][!]$fg[default] $1" >&2; fi }
+func()   { if [[ $DEBUG == 1 ]]; then print "$fg[blue][D]$fg[default] $1" >&2; fi }
+act()    {
+    if [[ $QUIET == 0 ]]; then
+	if [ "$1" = "-n" ]; then
+	    print -n "$fg_bold[white] . $fg_no_bold[default] $2" >&2;
+	else
+	    print "$fg_bold[white] . $fg_no_bold[default] $1" >&2;
+	fi
+    fi
+}
+
+# honor quiet and debug flags as early as possible
+if [[ ${@} == *-q* ]]; then QUIET=1; fi
+if [[ ${@} == *-D* ]]; then DEBUG=1; fi
+
+# what operating system are we in? use os_detect()
+# simplifying modes of operation: GNU or MAC
+case $(uname) in
+    Linux) OS=GNU
+	notice "Jaro Mail v$VERSION running on GNU/Linux"	;;
+
+    Darwin) OS=MAC
+	notice "Jaro Mail v$VERSION running on Mac/OSX"	;;
+
+    *) OS=GNU # default
+	error "Running on an unknown operating system, assuming GNU" ;;
+esac
+
