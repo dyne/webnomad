@@ -1,0 +1,260 @@
+#!/usr/bin/env zsh
+#
+# Jaro Web, your slick and static website publisher
+#
+# Copyleft (C) 2012 Denis Roio <jaromil@dyne.org>
+#
+# This source  code is free  software; you can redistribute  it and/or
+# modify it under the terms of  the GNU Public License as published by
+# the Free  Software Foundation; either  version 3 of the  License, or
+# (at your option) any later version.
+#
+# This source code is distributed in  the hope that it will be useful,
+# but  WITHOUT ANY  WARRANTY;  without even  the  implied warranty  of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+# standard output message routines
+# it's always useful to wrap them, in case we change behaviour later
+notice() { if [[ $QUIET == 0 ]]; then print "$fg_bold[green][*]$fg_no_bold[default] $1" >&2; fi }
+error()  { if [[ $QUIET == 0 ]]; then print "$fg[red][!]$fg[default] $1" >&2; fi }
+func()   { if [[ $DEBUG == 1 ]]; then print "$fg[blue][D]$fg[default] $1" >&2; fi }
+act()    {
+    if [[ $QUIET == 0 ]]; then
+	if [ "$1" = "-n" ]; then
+	    print -n "$fg_bold[white] . $fg_no_bold[default] $2" >&2;
+	else
+	    print "$fg_bold[white] . $fg_no_bold[default] $1" >&2;
+	fi
+    fi
+}
+
+# honor quiet and debug flags as early as possible
+if [[ ${@} == *-q* ]]; then QUIET=1; fi
+if [[ ${@} == *-D* ]]; then DEBUG=1; fi
+
+# what operating system are we in? use os_detect()
+# simplifying modes of operation: GNU or MAC
+case $(uname) in
+    Linux) OS=GNU
+	notice "Jaro Mail v$VERSION running on GNU/Linux"	;;
+
+    Darwin) OS=MAC
+	notice "Jaro Mail v$VERSION running on Mac/OSX"	;;
+
+    *) OS=GNU # default
+	error "Running on an unknown operating system, assuming GNU" ;;
+esac
+
+{ test -r config.zsh } || {
+    error "Directory not configured for Jaro Web. First use jaroweb init"
+    exit 1 }
+
+
+####################################
+    
+source config.zsh
+
+notice "Rendering $BRAND website"
+act "Title: $TITLE"
+
+mkdir -p pub
+cat << EOF > pub/.htaccess
+DirectoryIndex index index.html index.php
+DefaultType text/html
+EOF
+
+
+render_html() {
+
+    src=`find views -type f -name "${1}.html"`
+    { test -r "${src}" } || {
+	print "${1} html not found";
+	return 1 }
+
+
+    dst="pub/${1}"
+
+    print -n "rendering $dst... "
+    # TODO: check duplicates
+
+    # establish if we are rendering a section
+    if [[ ${sections[(i)$1]} -le ${#sections} ]]; then
+	sec=${1}
+    else
+	sec=`dirname $src`
+	sec=${sec[(ws:/:)2]}
+    fi
+
+    cat <<EOF > $dst
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>$TITLE</title>
+    <meta name="description" content="$DESCRIPTION">
+    <meta name="keywords" content="$KEYWORDS">
+EOF
+    cat tmpl/header.html >> $dst
+    echo "<nav>" >> $dst
+    render_navbar ${sec} >> $dst
+    echo "</nav>" >> $dst
+
+    echo "<article>" >> $dst
+    grep -v '^#' ${src} >> $dst
+    echo "</article>" >> $dst
+
+    cat tmpl/footer.html >> $dst
+    print "done."
+}
+
+read_meta() {
+    tmp=`awk '
+    !/^#/ { next }
+    /title/ { printf "title=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
+    /description/ { printf "description=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
+    /keywords/ { printf "keywords=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
+    /link/ { printf "link=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
+    /image/ { printf "image=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
+    ' ${1}`
+    eval "$tmp"
+}
+
+render_section() {
+    sname=${1}
+    spath=views/${sname}
+    
+    
+    { test -d ${spath} } && {
+	# the section is a directory containing files
+	# so we generate its html
+
+	pages=`find ${spath} -type f`
+        { test ${#pages} = 0 } && {
+	    print "${sname} section is an empty directory"
+	    return 1 }
+
+	print "${sname} section"
+	print "<h1>${sname//_/ }</h1>" > ${spath}.html
+	
+	for p in ${(f)pages}; do
+	    pp=`basename $p`
+	    case ${pp[(ws:.:)2]} in
+		
+		html)
+		    read_meta $p
+		    # fill in entry into section page
+		    cat <<EOF >> ${spath}.html
+<h2>$title</h2>
+<p>$description</p>
+EOF
+		    # print "Title: $title"
+		    # print "Description: $description"
+		    # print "Keywords: $keywords"
+		    render_html ${pp[(ws:.:)1]}
+		    ;;
+		
+		link)
+		    print -n "rendering $pp... "
+		    read_meta $p
+		    cat <<EOF >> ${spath}.html
+<h2><a href="$link" target="_blank">$title</a></h2>
+<p>$description</p>
+EOF
+		    print "done."
+		    ;;
+		*)
+		    print "${p}: page type unknown"
+		    ;;
+		
+	    esac
+	    
+	done # pages
+
+    }
+
+    { test -r ${spath}.html } || {
+	print "${sname} section not found in views"
+	return 1 }
+
+    # render section's overview
+    render_html ${sname}
+    # at this point the section is an actual html file
+
+}
+
+render_navbar() {
+    active=${1}
+
+    cat <<EOF
+<!-- BEGIN NAVIGATION BAR -->
+      <div class="navbar navbar-fixed-top">
+	<div class="navbar-inner">
+          <div class="brand">&nbsp;&nbsp;&nbsp;${BRAND}</div>
+            <ul class="nav">
+            <li class="divider-vertical"></li>
+EOF
+
+# first section: overview 
+    if [ "$active" = "views" ]; then
+	cat <<EOF
+<li class="active"><a href="index">intro</a></li>
+EOF
+    else
+	cat <<EOF
+<li><a href="index">intro</a></li>
+EOF
+    fi
+
+# other sections
+    for sec in ${sections}; do
+	ssec=`basename $sec`
+	if [ "$ssec" = "$active" ]; then
+	    cat <<EOF
+ <li class="active"><a href="${ssec}">${ssec//_/ }</a></li>
+EOF
+	else
+	    cat <<EOF
+ <li><a href="${ssec}">${ssec//_/ }</a></li>
+EOF
+	fi
+    done
+    
+    # complete navbar with static entries if present
+    { test -r tmpl/navbar.html } && { cat tmpl/navbar.html }
+
+    cat <<EOF
+           </ul>
+        </div>
+     </div>
+<!-- END NAVIGATION BAR -->
+EOF
+}
+
+
+# Main
+
+render_html index
+
+act "${#sections} sections configured"
+
+if [ ${#sections} = 0 ]; then
+    act "No sections configured"
+else
+    
+    for s in ${sections}; do
+	
+	render_section ${s}
+	
+    done
+    
+fi
+
+for m in `find views -mindepth 1 -type d `; do
+    rsync -r $m pub/
+    notice "$m published"
+done
+act "Website refreshed."

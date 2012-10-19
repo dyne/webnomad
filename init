@@ -1,0 +1,97 @@
+#!/usr/bin/env zsh
+#
+# Jaro Web, your slick and static website publisher
+#
+# Copyleft (C) 2012 Denis Roio <jaromil@dyne.org>
+#
+# This source  code is free  software; you can redistribute  it and/or
+# modify it under the terms of  the GNU Public License as published by
+# the Free  Software Foundation; either  version 3 of the  License, or
+# (at your option) any later version.
+#
+# This source code is distributed in  the hope that it will be useful,
+# but  WITHOUT ANY  WARRANTY;  without even  the  implied warranty  of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+mkdir views	    	  
+cat <<EOF > views/index.html
+<h1>Hello world</h1>
+
+<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do
+eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
+minim veniam, quis nostrud exercitation ullamco laboris nisi ut
+aliquip ex ea commodo consequat. Duis aute irure dolor in
+reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+culpa qui officia deserunt mollit anim id est laborum.</p>
+
+EOF
+mkdir tmpl
+car <<EOF > tmpl/header
+EOF
+cat <<EOF > tmpl/footer.html
+<hr>
+<footer  style="padding: 1em;">
+  <div class="pull-left">
+    <small>All information found on this page is free to copy</small>
+  </div>
+
+    <small class="pull-right">Website made in HTML5<br />using <a
+    href="http://jaroweb.dyne.org" target="_blank">Jaro
+    Web</a></small>
+
+    &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+
+</footer>
+</div><!--/.container-->
+
+<script src="js/bootstrap.js"></script>
+
+  </body>
+</html>
+
+EOF
+cat <<EOF > tmpl/header.html
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> 
+<meta name="Generator" content="Jaro Web http://jaroweb.dyne.org" />
+<meta name="MSSmartTagsPreventParsing" content="True" />
+
+<!-- Bootstrap -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="css/bootstrap.min.css" rel="stylesheet">
+<link href="css/bootstrap-responsive.css" rel="stylesheet">
+
+<link rel="shortcut icon" href="/favicon.ico">
+
+<!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
+<!--[if lt IE 9]>
+    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+</head>
+<body>  
+  <div class="container">
+EOF
+notice "Downloading and installing Bootstrap"
+curl http://twitter.github.com/bootstrap/assets/bootstrap.zip -o bootstrap.zip
+unzip bootstrap.zip
+mv bootstrap/css views/
+mv bootstrap/js views/
+mv bootstrap/img views/
+rm -rf bootstrap bootstrap.zip
+act "Bootstrap installed"
+
+cat <<EOF > Makefile
+all:
+	@./jaroweb/render
+
+clean:
+	rm -rf pub
+
+upload:
+	@scp -r pub/.htaccess pub/* online.server.org:/var/www
