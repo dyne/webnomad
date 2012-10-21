@@ -163,21 +163,24 @@ render_navbar() {
 <!-- BEGIN NAVIGATION BAR -->
       <div class="navbar navbar-fixed-top">
 	<div class="navbar-inner">
-          <div class="brand">&nbsp;&nbsp;&nbsp;${BRAND}</div>
+EOF
+# first section: overview 
+    if [ "$active" = "views" ]; then
+        cat <<EOF
+ <div class="brand active">&nbsp;&nbsp;&nbsp;${BRAND}</div>
+EOF
+    else
+	cat <<EOF
+<a href="index">
+ <div class="brand">&nbsp;&nbsp;&nbsp;${BRAND}</div>
+</a>
+EOF
+    fi
+cat <<EOF
             <ul class="nav">
             <li class="divider-vertical"></li>
 EOF
 
-# first section: overview 
-    if [ "$active" = "views" ]; then
-	cat <<EOF
-<li class="active"><a href="index">intro</a></li>
-EOF
-    else
-	cat <<EOF
-<li><a href="index">intro</a></li>
-EOF
-    fi
 
 # other sections
     for sec in ${sections}; do
