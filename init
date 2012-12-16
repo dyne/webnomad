@@ -20,8 +20,10 @@
 
 source jaroweb/utils
 
-mkdir -p views	    	  
-cat <<EOF > views/index.html
+
+mkdir -p views
+{ test -r views/index.html } || {
+    cat <<EOF > views/index.html
 <h1>Hello world</h1>
 
 <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do
@@ -33,9 +35,11 @@ pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
 culpa qui officia deserunt mollit anim id est laborum.</p>
 
 EOF
-mkdir -p tmpl
+}
 
-cat <<EOF > tmpl/header.html
+mkdir -p tmpl
+{ test -r tmpl/header.html } || {
+    cat <<EOF > tmpl/header.html
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> 
 <meta name="Generator" content="Jaro Web http://jaroweb.dyne.org" />
 <meta name="MSSmartTagsPreventParsing" content="True" />
@@ -66,8 +70,10 @@ cat <<EOF > tmpl/header.html
 <body>  
   <div class="container">
 EOF
+}
 
-cat <<EOF > tmpl/footer.html
+{ test -r tmpl/footer.html } || {
+    cat <<EOF > tmpl/footer.html
 <hr>
 <footer  style="padding: 1em;">
   <div class="pull-left">
@@ -89,6 +95,7 @@ cat <<EOF > tmpl/footer.html
 </html>
 
 EOF
+}
 
 notice "Downloading and installing Bootstrap"
 curl http://twitter.github.com/bootstrap/assets/bootstrap.zip -o bootstrap.zip
@@ -99,7 +106,8 @@ rsync -r bootstrap/img views/
 rm -rf bootstrap bootstrap.zip
 act "Bootstrap installed"
 
-cat <<EOF > config.zsh
+{ test -r config.zsh } || {
+    cat <<EOF > config.zsh
 TITLE="A new website made with Jaro Web."
 BRAND="Jaro Web"
 DESCRIPTION="Jaro Web, your slick and static website publisher, powered by HTML5, Zsh and Bootstrap"
@@ -108,10 +116,11 @@ KEYWORDS="web, design, html"
 # Sections must be matching existing files in views/
 typeset -al sections
 sections=(contact)
-
-
 EOF
-cat <<EOF > Makefile
+}
+
+{ test -r Makefile } || {
+    cat <<EOF > Makefile
 all:
 	@./jaroweb/render
 
@@ -120,3 +129,5 @@ clean:
 
 upload:
 	@scp -r pub/.htaccess pub/* online.server.org:/var/www
+EOF
+}

@@ -26,7 +26,7 @@ source jaroweb/utils
 
 
 ####################################
-    
+
 source config.zsh
 
 notice "Rendering $BRAND website"
@@ -38,12 +38,27 @@ DirectoryIndex index index.html index.php
 DefaultType text/html
 EOF
 
+render_header() {
+    cat <<EOF
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>$TITLE</title>
+    <meta name="description" content="$DESCRIPTION">
+    <meta name="keywords" content="$KEYWORDS">
+EOF
+    cat tmpl/header.html
+    echo "<nav>"
+    render_navbar ${sec}
+    echo "</nav>"
+}
 
 render_html() {
 
     src=`find views -type f -name "${1}.html"`
+
     { test -r "${src}" } || {
-	print "${1} html not found";
+	print "${1} section not found";
 	return 1 }
 
 
@@ -60,18 +75,7 @@ render_html() {
 	sec=${sec[(ws:/:)2]}
     fi
 
-    cat <<EOF > $dst
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>$TITLE</title>
-    <meta name="description" content="$DESCRIPTION">
-    <meta name="keywords" content="$KEYWORDS">
-EOF
-    cat tmpl/header.html >> $dst
-    echo "<nav>" >> $dst
-    render_navbar ${sec} >> $dst
-    echo "</nav>" >> $dst
+    render_header > $dst
 
     echo "<article>" >> $dst
     grep -v '^#' ${src} >> $dst
@@ -81,6 +85,9 @@ EOF
     print "done."
 }
 
+
+
+
 read_meta() {
     tmp=`awk '
     !/^#/ { next }
@@ -88,6 +95,7 @@ read_meta() {
     /description/ { printf "description=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
     /keywords/ { printf "keywords=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
     /link/ { printf "link=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
+    /icon/ { printf "icon=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
     /image/ { printf "image=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
     ' ${1}`
     eval "$tmp"
@@ -96,24 +104,24 @@ read_meta() {
 render_section() {
     sname=${1}
     spath=views/${sname}
-    
-    
+
+
     { test -d ${spath} } && {
 	# the section is a directory containing files
 	# so we generate its html
 
 	pages=`find ${spath} -type f`
-        { test ${#pages} = 0 } && {
+	{ test ${#pages} = 0 } && {
 	    print "${sname} section is an empty directory"
 	    return 1 }
 
 	print "${sname} section"
 	print "<h1>${sname//_/ }</h1>" > ${spath}.html
-	
+
 	for p in ${(f)pages}; do
 	    pp=`basename $p`
 	    case ${pp[(ws:.:)2]} in
-		
+
 		html)
 		    read_meta $p
 		    # fill in entry into section page
@@ -126,7 +134,7 @@ EOF
 		    # print "Keywords: $keywords"
 		    render_html ${pp[(ws:.:)1]}
 		    ;;
-		
+
 		link)
 		    print -n "rendering $pp... "
 		    read_meta $p
@@ -139,9 +147,9 @@ EOF
 		*)
 		    print "${p}: page type unknown"
 		    ;;
-		
+
 	    esac
-	    
+
 	done # pages
 
     }
@@ -157,51 +165,60 @@ EOF
 }
 
 render_navbar() {
-    active=${1}
+    active="$1"
 
     cat <<EOF
 <!-- BEGIN NAVIGATION BAR -->
-      <div class="navbar navbar-fixed-top">
+      <div class="navbar ${NAVCLASS}">
 	<div class="navbar-inner">
 EOF
-# first section: overview 
+
+# defaults
+    nav_active="brand"
+    nav_icon="&nbsp;"
+    icon=""
+# first section: overview
     if [ "$active" = "views" ]; then
-        cat <<EOF
- <div class="brand active">&nbsp;&nbsp;&nbsp;${BRAND}</div>
-EOF
+	nav_active+=" active"
+	current="index"
     else
-	cat <<EOF
-<a href="index">
- <div class="brand">&nbsp;&nbsp;&nbsp;${BRAND}</div>
-</a>
-EOF
+	current="$1"
     fi
-cat <<EOF
-            <ul class="nav">
-            <li class="divider-vertical"></li>
+
+
+    cat <<EOF
+<a href="index">
+ <div class="$nav_active">
+${nav_icon}&nbsp;&nbsp;${BRAND}
+</div>
+</a>
+  <ul class="nav">
 EOF
 
 
 # other sections
     for sec in ${sections}; do
 	ssec=`basename $sec`
-	if [ "$ssec" = "$active" ]; then
-	    cat <<EOF
- <li class="active"><a href="${ssec}">${ssec//_/ }</a></li>
+	icon=""; nav_icon="&nbsp;"
+	nav_active=""
+	read_meta views/$ssec.html
+	{ test "$icon" = "" } || {
+	    nav_icon="<i class=\"icon-${icon}\"></i>" }
+	{ test "$ssec" = "$active" } && {
+	    nav_active=" class=\"active\"" }
+	cat <<EOF
+ <li${nav_active}><a href="${ssec}">${nav_icon}&nbsp;${ssec//_/ }</a></li>
 EOF
-	else
-	    cat <<EOF
- <li><a href="${ssec}">${ssec//_/ }</a></li>
-EOF
-	fi
     done
-    
+
+    unset active
+
     # complete navbar with static entries if present
     { test -r tmpl/navbar.html } && { cat tmpl/navbar.html }
 
     cat <<EOF
-           </ul>
-        </div>
+	   </ul>
+	</div>
      </div>
 <!-- END NAVIGATION BAR -->
 EOF
@@ -217,14 +234,11 @@ act "${#sections} sections configured"
 if [ ${#sections} = 0 ]; then
     act "No sections configured"
 else
-    
     for s in ${sections}; do
-	
 	render_section ${s}
-	
     done
-    
 fi
+
 
 for m in `find views -mindepth 1 -type d `; do
     rsync -r $m pub/
