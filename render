@@ -196,20 +196,20 @@ ${nav_icon}&nbsp;&nbsp;${BRAND}
 EOF
 
 
-# other sections
-    for sec in ${sections}; do
-	ssec=`basename $sec`
-	icon=""; nav_icon="&nbsp;"
-	nav_active=""
-	read_meta views/$ssec.html
-	{ test "$icon" = "" } || {
-	    nav_icon="<i class=\"icon-${icon}\"></i>" }
-	{ test "$ssec" = "$active" } && {
-	    nav_active=" class=\"active\"" }
-	cat <<EOF
- <li${nav_active}><a href="${ssec}">${nav_icon}&nbsp;${ssec//_/ }</a></li>
-EOF
-    done
+# # other sections
+#     for sec in ${sections}; do
+# 	ssec=`basename $sec`
+# 	icon=""; nav_icon="&nbsp;"
+# 	nav_active=""
+# 	read_meta views/$ssec.html
+# 	{ test "$icon" = "" } || {
+# 	    nav_icon="<i class=\"icon-${icon}\"></i>" }
+# 	{ test "$ssec" = "$active" } && {
+# 	    nav_active=" class=\"active\"" }
+# 	cat <<EOF
+#  <li${nav_active}><a href="${ssec}">${nav_icon}&nbsp;${ssec//_/ }</a></li>
+# EOF
+#     done
 
     unset active
 
