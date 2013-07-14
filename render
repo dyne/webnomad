@@ -64,7 +64,7 @@ render_html() {
 
     dst="pub/${1}"
 
-    print -n "rendering $dst... "
+    act -n "rendering html: $dst... "
     # TODO: check duplicates
 
     # establish if we are rendering a section
@@ -85,7 +85,39 @@ render_html() {
     print "done."
 }
 
+render_markdown() {
+    src=`find views -type f -name "${1}.md"`
 
+    { test -r "${src}" } || {
+	print "${1} section not found";
+	return 1 }
+
+
+    dst="pub/${1%.*}"
+
+    act -n "rendering markdown: $dst... "
+    # TODO: check duplicates
+
+    # establish if we are rendering a section
+    if [[ ${sections[(i)$1]} -le ${#sections} ]]; then
+	sec=${1}
+    else
+	sec=`dirname $src`
+	sec=${sec[(ws:/:)2]}
+    fi
+
+
+    render_header > $dst
+
+    echo "<article>" >> $dst
+    cat ${src} | markdown >> $dst
+    echo "</article>" >> $dst
+
+    cat tmpl/footer.html >> $dst
+    print "done."
+
+
+}
 
 
 read_meta() {
@@ -195,25 +227,9 @@ ${nav_icon}&nbsp;&nbsp;${BRAND}
   <ul class="nav">
 EOF
 
-
-# # other sections
-#     for sec in ${sections}; do
-# 	ssec=`basename $sec`
-# 	icon=""; nav_icon="&nbsp;"
-# 	nav_active=""
-# 	read_meta views/$ssec.html
-# 	{ test "$icon" = "" } || {
-# 	    nav_icon="<i class=\"icon-${icon}\"></i>" }
-# 	{ test "$ssec" = "$active" } && {
-# 	    nav_active=" class=\"active\"" }
-# 	cat <<EOF
-#  <li${nav_active}><a href="${ssec}">${nav_icon}&nbsp;${ssec//_/ }</a></li>
-# EOF
-#     done
-
     unset active
 
-    # complete navbar with static entries if present
+    # use the plain html navbar in tmpl/
     { test -r tmpl/navbar.html } && { cat tmpl/navbar.html }
 
     cat <<EOF
@@ -229,19 +245,21 @@ EOF
 
 render_html index
 
-act "${#sections} sections configured"
+# render all HTML views
+htmls=(`find views -type f -name '*.html'`)
+for h in $htmls; do
+    render_html `basename ${h%.*}`
+done
 
-if [ ${#sections} = 0 ]; then
-    act "No sections configured"
-else
-    for s in ${sections}; do
-	render_section ${s}
-    done
-fi
-
+# render all markdown views
+mds=(`find views -type f -name '*.md'`)
+for m in $mds; do
+    render_markdown `basename ${m%.*}`
+done
 
 for m in `find views -mindepth 1 -type d `; do
+    act -n "publishing $m... "
     rsync -r $m pub/
-    notice "$m published"
+    print done
 done
 act "Website refreshed."
