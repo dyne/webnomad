@@ -119,6 +119,80 @@ render_markdown() {
 
 }
 
+render_gallery() {
+    src=`find views -type f -name "${1}.gal"`
+
+    { test -r "${src}" } || {
+	print "${1} section not found";
+	return 1 }
+
+
+    dst="pub/${1%.*}"
+
+    act -n "rendering gallery: $dst... "
+
+    cat <<EOF > $dst
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>$TITLE</title>
+    <meta name="description" content="$DESCRIPTION">
+    <meta name="keywords" content="$KEYWORDS">
+    <link rel="stylesheet" href="css/blueimp-gallery.min.css">
+EOF
+    cat tmpl/header.html >> $dst
+    echo "<nav>" >> $dst
+    render_navbar ${sec} >> $dst
+    echo "</nav>" >> $dst
+
+cat <<EOF >> $dst
+<!-- The Gallery as lightbox dialog, should be a child element of the document body -->
+<div id="blueimp-gallery" class="blueimp-gallery">
+    <div class="slides"></div>
+    <h3 class="title"></h3>
+    <a class="prev">‹</a>
+    <a class="next">›</a>
+<!--    <a class="close">×</a> -->
+    <a class="play-pause"></a>
+    <ol class="indicator"></ol>
+</div>
+
+<script src="js/jquery.min.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<script src="js/blueimp-gallery.js"></script>
+
+<script>
+var slides= [];
+EOF
+
+    # parse gallery entries
+    pics=`grep -v '^#' ${src}`
+    for p in ${(f)pics}; do
+	file=${p[(ws: :)1]}
+	desc=`echo $p | awk '{ for(c=2;c<=NF;c++) printf("%s ",$c) }'`
+	cat << EOF >> $dst
+slides.push({
+	href: '${file}',
+	title: '${desc}'
+});
+EOF
+    done
+
+cat <<EOF >> $dst
+blueimp.Gallery(slides, {
+        container: '#blueimp-gallery',
+        carousel: true,
+        fullscreen: false,
+        closeOnEscape: false,
+        closeOnSlideClick: false,
+        closeOnSwipeUpOrDown: false,
+        startSlideshow: true
+});
+</script>
+EOF
+    cat tmpl/footer.html >> $dst
+    print "done."
+}
 
 read_meta() {
     tmp=`awk '
@@ -255,6 +329,12 @@ done
 mds=(`find views -type f -name '*.md'`)
 for m in $mds; do
     render_markdown `basename ${m%.*}`
+done
+
+# render all image galleries
+gals=(`find views -type f -name '*.gal'`)
+for g in $gals; do
+    render_gallery `basename ${g%.*}`
 done
 
 for m in `find views -mindepth 1 -type d `; do

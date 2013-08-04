@@ -2,7 +2,7 @@
 #
 # Jaro Web, your slick and static website publisher
 #
-# Copyleft (C) 2012 Denis Roio <jaromil@dyne.org>
+# Copyleft (C) 2012-2013 Denis Roio <jaromil@dyne.org>
 #
 # This source  code is free  software; you can redistribute  it and/or
 # modify it under the terms of  the GNU Public License as published by
@@ -72,39 +72,40 @@ mkdir -p tmpl
 EOF
 }
 
-{ test -r tmpl/footer.html } || {
-    cat <<EOF > tmpl/footer.html
-<hr>
-<footer  style="padding: 1em;">
-  <div class="pull-left">
-    <small>All information found on this page is free to copy</small>
-  </div>
+{ test -r tmpl/footer.html } || { cp -v jaroweb/tmpl/footer.html tmpl/footer.html }
 
-    <small class="pull-right">Website made<br />with <a
-    href="http://jaroweb.dyne.org" target="_blank">Jaro
-    Web</a></small>
-
-    &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-
-</footer>
-</div><!--/.container-->
-
-<script src="js/bootstrap.js"></script>
-
-  </body>
-</html>
-
+{ test -r tmpl/navbar.html } || {
+    cat <<EOF > tmpl/navbar.html
+<!-- Menu on top, entries shall match pages in views/ -->
+ <li class="divider-vertical"></li>
+ <li><a href="artworks">artworks</a></li>
+ <li><a href="writings">writings</a></li>
+ <li><a href="media">media</a></li>
+ <li class="divider-vertical"></li>
+ <li><a href="contact">contact</a></li>
 EOF
 }
 
+{ test -r views/css/bootstrap.css } || {
 notice "Downloading and installing Bootstrap"
-curl http://twitter.github.com/bootstrap/assets/bootstrap.zip -o bootstrap.zip
+curl http://twitter.github.io/bootstrap/assets/bootstrap.zip -o bootstrap.zip
 unzip -q bootstrap.zip
 rsync -r bootstrap/css views/
 rsync -r bootstrap/js views/
 rsync -r bootstrap/img views/
 rm -rf bootstrap bootstrap.zip
 act "Bootstrap installed"
+}
+
+{ test -r views/css/blueimp-gallery.js } || {
+notice "Downloading and installing BlueImp gallery"
+git clone https://github.com/blueimp/Gallery.git blueimp
+rsync -r blueimp/css views/
+rsync -r blueimp/js views/
+rsync -r blueimp/img views/
+rm -rf blueimp
+act "BlueImp installed"
+}
 
 { test -r config.zsh } || {
     cat <<EOF > config.zsh
@@ -112,10 +113,7 @@ TITLE="A new website made with Jaro Web."
 BRAND="Jaro Web"
 DESCRIPTION="Jaro Web, your slick and static website publisher, powered by HTML5, Zsh and Bootstrap"
 KEYWORDS="web, design, html"
-
-# Sections must be matching existing files in views/
-typeset -al sections
-sections=(contact)
+NAVCLASS="navbar-fixed-top"
 EOF
 }
 
@@ -131,3 +129,5 @@ upload:
 	@scp -r pub/.htaccess pub/* online.server.org:/var/www
 EOF
 }
+
+act "website initialized."
