@@ -2,7 +2,7 @@
 #
 # Jaro Web, your slick and static website publisher
 #
-# Copyleft (C) 2012 Denis Roio <jaromil@dyne.org>
+# Copyleft (C) 2012-2013 Denis Roio <jaromil@dyne.org>
 #
 # This source  code is free  software; you can redistribute  it and/or
 # modify it under the terms of  the GNU Public License as published by
@@ -32,6 +32,8 @@ source config.zsh
 notice "Rendering $BRAND website"
 act "Title: $TITLE"
 
+typeset -a includejs
+
 mkdir -p pub
 cat << EOF > pub/.htaccess
 DirectoryIndex index index.html index.php
@@ -44,13 +46,58 @@ render_header() {
 <html>
   <head>
     <title>$TITLE</title>
-    <meta name="description" content="$DESCRIPTION">
-    <meta name="keywords" content="$KEYWORDS">
+    <meta name="description" content="$DESCRIPTION" />
+    <meta name="keywords" content="$KEYWORDS" />
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> 
+    <meta name="Generator" content="Jaro Web http://dyne.org/software/jaroweb" />
+    <meta name="MSSmartTagsPreventParsing" content="True" />
+
+<!-- Le HTML5 shim, for IE6-8 support of HTML5 elements
+     http://html5shim.googlecode.com/svn/trunk/html5.js -->
+<!--[if lt IE 9]>
+    <script src="js/html5.js"></script>
+    <![endif]-->
+
+<!-- Bootstrap -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="css/bootstrap.min.css" rel="stylesheet" />
+    <link href="css/bootstrap-responsive.min.css" rel="stylesheet" />
+
 EOF
+
+    { test "$1" = "" } || { echo "${@}"; echo }
+
     cat tmpl/header.html
-    echo "<nav>"
-    render_navbar ${sec}
-    echo "</nav>"
+
+    cat <<EOF
+</head> <!-- end of <head> -->
+
+<body>  
+  <div class="container">
+EOF
+
+    cat tmpl/navbar.html
+
+}
+
+render_footer() {
+    cat tmpl/footer.html
+
+    cat <<EOF
+</div><!--/.container-->
+EOF
+
+    { test "$1" = "" } || { echo "${@}"; echo }
+
+    for i in $includejs; do
+	echo "<script src=\"$i\"></script>"
+    done
+
+cat <<EOF
+  </body>
+</html>
+EOF
 }
 
 render_html() {
@@ -81,7 +128,9 @@ render_html() {
     grep -v '^#' ${src} >> $dst
     echo "</article>" >> $dst
 
-    cat tmpl/footer.html >> $dst
+    includejs+=(js/bootstrap.min.js)
+    render_footer >> $dst
+
     print "done."
 }
 
@@ -113,7 +162,9 @@ render_markdown() {
     cat ${src} | markdown >> $dst
     echo "</article>" >> $dst
 
-    cat tmpl/footer.html >> $dst
+    includejs+=(js/bootstrap.min.js)
+    render_footer >> $dst
+
     print "done."
 
 
@@ -131,19 +182,7 @@ render_gallery() {
 
     act -n "rendering gallery: $dst... "
 
-    cat <<EOF > $dst
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>$TITLE</title>
-    <meta name="description" content="$DESCRIPTION">
-    <meta name="keywords" content="$KEYWORDS">
-    <link rel="stylesheet" href="css/blueimp-gallery.min.css">
-EOF
-    cat tmpl/header.html >> $dst
-    echo "<nav>" >> $dst
-    render_navbar ${sec} >> $dst
-    echo "</nav>" >> $dst
+    render_header "<link rel=\"stylesheet\" href=\"css/blueimp-gallery.min.css\" />" > $dst
 
 cat <<EOF >> $dst
 <!-- The Gallery as lightbox dialog, should be a child element of the document body -->
@@ -152,16 +191,31 @@ cat <<EOF >> $dst
     <h3 class="title"></h3>
     <a class="prev">‹</a>
     <a class="next">›</a>
-<!--    <a class="close">×</a> -->
+    <a class="close">×</a>
     <a class="play-pause"></a>
     <ol class="indicator"></ol>
 </div>
 
-<script src="js/jquery.min.js"></script>
-<script src="js/bootstrap.min.js"></script>
-<script src="js/blueimp-gallery.js"></script>
+EOF
 
-<script>
+# embed the first slide into the page for non-javascript browsers
+nojs_line=`grep -v '^#' ${src} | head -n1`
+nojs_file=${nojs_line[(ws: :)1]}
+nojs_desc=`echo $nojs_line | awk '{ for(c=2;c<=NF;c++) printf("%s ",$c) }'`
+
+cat <<EOF >> $dst
+<noscript>
+<p>You either have JavaScript turned off or your browser doesn't support JavaScript.<br />
+This website mostly consists of image galleries and needs JavaScript.</p>
+<!-- just in case there is no javascript, show the first image-->
+<img src="${nojs_file}" alt="${nojs_desc}">
+</noscript>
+EOF
+
+# generate the gallery's javascript
+dst_js="js/${1%.*}-gallery.js"
+
+cat <<EOF > pub/${dst_js}
 var slides= [];
 EOF
 
@@ -170,7 +224,7 @@ EOF
     for p in ${(f)pics}; do
 	file=${p[(ws: :)1]}
 	desc=`echo $p | awk '{ for(c=2;c<=NF;c++) printf("%s ",$c) }'`
-	cat << EOF >> $dst
+	cat << EOF >> pub/$dst_js
 slides.push({
 	href: '${file}',
 	title: '${desc}'
@@ -178,19 +232,48 @@ slides.push({
 EOF
     done
 
-cat <<EOF >> $dst
+cat <<EOF >> pub/$dst_js
+
+function shuffle(array) {
+  var m = array.length, t, i;
+
+  // While there remain elements to shuffle…
+  while (m) {
+
+    // Pick a remaining element…
+    i = Math.floor(Math.random() * m--);
+
+    // And swap it with the current element.
+    t = array[m];
+    array[m] = array[i];
+    array[i] = t;
+  }
+
+  return array;
+}
+
+slides = shuffle(slides);
+
 blueimp.Gallery(slides, {
         container: '#blueimp-gallery',
         carousel: true,
-        fullscreen: false,
-        closeOnEscape: false,
-        closeOnSlideClick: false,
+        fullscreen: true,
+        closeOnEscape: true,
+        closeOnSlideClick: true,
         closeOnSwipeUpOrDown: false,
         startSlideshow: true
 });
-</script>
 EOF
-    cat tmpl/footer.html >> $dst
+
+#    includejs+=(js/blueimp-helper.js)
+    includejs+=(js/jquery.min.js)
+    includejs+=(js/bootstrap.min.js)
+    includejs+=(js/blueimp-gallery.min.js)
+#    includejs+=(js/jquery.blueimp-gallery.min.js)
+ #   includejs+=(js/blueimp-gallery-fullscreen.js)
+    includejs+=($dst_js)
+    render_footer >> $dst
+
     print "done."
 }
 
@@ -200,140 +283,35 @@ read_meta() {
     /title/ { printf "title=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
     /description/ { printf "description=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
     /keywords/ { printf "keywords=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
-    /link/ { printf "link=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
-    /icon/ { printf "icon=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
-    /image/ { printf "image=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
+    /gallery/ { printf "gallery=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
     ' ${1}`
     eval "$tmp"
-}
-
-render_section() {
-    sname=${1}
-    spath=views/${sname}
-
-
-    { test -d ${spath} } && {
-	# the section is a directory containing files
-	# so we generate its html
-
-	pages=`find ${spath} -type f`
-	{ test ${#pages} = 0 } && {
-	    print "${sname} section is an empty directory"
-	    return 1 }
-
-	print "${sname} section"
-	print "<h1>${sname//_/ }</h1>" > ${spath}.html
-
-	for p in ${(f)pages}; do
-	    pp=`basename $p`
-	    case ${pp[(ws:.:)2]} in
-
-		html)
-		    read_meta $p
-		    # fill in entry into section page
-		    cat <<EOF >> ${spath}.html
-<h2>$title</h2>
-<p>$description</p>
-EOF
-		    # print "Title: $title"
-		    # print "Description: $description"
-		    # print "Keywords: $keywords"
-		    render_html ${pp[(ws:.:)1]}
-		    ;;
-
-		link)
-		    print -n "rendering $pp... "
-		    read_meta $p
-		    cat <<EOF >> ${spath}.html
-<h2><a href="$link" target="_blank">$title</a></h2>
-<p>$description</p>
-EOF
-		    print "done."
-		    ;;
-		*)
-		    print "${p}: page type unknown"
-		    ;;
-
-	    esac
-
-	done # pages
-
-    }
-
-    { test -r ${spath}.html } || {
-	print "${sname} section not found in views"
-	return 1 }
-
-    # render section's overview
-    render_html ${sname}
-    # at this point the section is an actual html file
-
-}
-
-render_navbar() {
-    active="$1"
-
-    cat <<EOF
-<!-- BEGIN NAVIGATION BAR -->
-      <div class="navbar ${NAVCLASS}">
-	<div class="navbar-inner">
-EOF
-
-# defaults
-    nav_active="brand"
-    nav_icon="&nbsp;"
-    icon=""
-# first section: overview
-    if [ "$active" = "views" ]; then
-	nav_active+=" active"
-	current="index"
-    else
-	current="$1"
-    fi
-
-
-    cat <<EOF
-<a href="index">
- <div class="$nav_active">
-${nav_icon}&nbsp;&nbsp;${BRAND}
-</div>
-</a>
-  <ul class="nav">
-EOF
-
-    unset active
-
-    # use the plain html navbar in tmpl/
-    { test -r tmpl/navbar.html } && { cat tmpl/navbar.html }
-
-    cat <<EOF
-	   </ul>
-	</div>
-     </div>
-<!-- END NAVIGATION BAR -->
-EOF
 }
 
 
 # Main
 
-render_html index
+
+
 
 # render all HTML views
 htmls=(`find views -type f -name '*.html'`)
 for h in $htmls; do
+    read_meta ${h}
     render_html `basename ${h%.*}`
 done
 
 # render all markdown views
 mds=(`find views -type f -name '*.md'`)
 for m in $mds; do
+    read_meta ${m}
     render_markdown `basename ${m%.*}`
 done
 
 # render all image galleries
 gals=(`find views -type f -name '*.gal'`)
 for g in $gals; do
+    read_meta ${g}
     render_gallery `basename ${g%.*}`
 done
 
