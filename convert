@@ -1,0 +1,64 @@
+#!/usr/bin/env zsh
+#
+# Jaro Web, your slick and static website publisher
+#
+# Copyleft (C) 2012-2013 Denis Roio <jaromil@dyne.org>
+#
+# This source  code is free  software; you can redistribute  it and/or
+# modify it under the terms of  the GNU Public License as published by
+# the Free  Software Foundation; either  version 3 of the  License, or
+# (at your option) any later version.
+#
+# This source code is distributed in  the hope that it will be useful,
+# but  WITHOUT ANY  WARRANTY;  without even  the  implied warranty  of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+source jaroweb/utils
+
+{ test "$3" = "" } && {
+    error "usage: remaster [destination dir] [images dir] [commands]";
+    act "commands are imagemagick's convert commands"
+    return 1 }
+
+dst="$1"; shift
+src="$1"; shift
+
+act "source: $src"
+act "destination: $dst"
+act "convert args: ${=@}"
+
+
+images=()
+images+=(`find $src -iname '*.jpg'`)
+images+=(`find $src -iname '*.jpeg'`)
+
+act "images found in source: ${#images}"
+
+results=()
+
+for i in $images; do
+    destfile=`basename $i`
+    # escape all weird characters in filenames
+    destfile_sane=`print $destfile | sed -e "s@'@@g"`
+    act -n "resizing $destfile_sane ... "
+    convert $i ${=@} $dst/$destfile_sane
+    if [ $? = 0 ]; then
+	results+=($dst/$destfile_sane)
+	print " done"
+    else print " error!"; fi
+
+    # clean from exif info
+    # exif --remove $dst/$destfile.resized.jpg -o $dst/$destfile
+done
+
+act "rotating images according to exif orientation"
+exiftran -a -i ${=results}
+act "done."
+
+
+
