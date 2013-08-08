@@ -51,25 +51,16 @@ mkdir -p tmpl
     cp -v jaroweb/js/html5.js views/js }
 
 { test -r views/css/bootstrap.css } || {
-notice "Downloading and installing Bootstrap"
-curl http://twitter.github.io/bootstrap/assets/bootstrap.zip -o bootstrap.zip
-unzip -q bootstrap.zip
-rsync -r bootstrap/css views/
-rsync -r bootstrap/js views/
-rsync -r bootstrap/img views/
-rm -rf bootstrap bootstrap.zip
-act "Bootstrap installed"
-}
+    cp -v jaroweb/js/bootstrap* views/js
+    cp -v jaroweb/css/bootstrap* views/css }
 
-{ test -r views/css/blueimp-gallery.js } || {
-notice "Downloading and installing BlueImp gallery"
-git clone https://github.com/blueimp/Gallery.git blueimp
-rsync -r blueimp/css views/
-rsync -r blueimp/js views/
-rsync -r blueimp/img views/
-rm -rf blueimp
-act "BlueImp installed"
-}
+{ test -r views/css/blueimp-gallery.css } || {
+    cp -v jaroweb/js/*blueimp* views/js
+    cp -v jaroweb/css/*blueimp* views/css }
+
+{ test -r views/css/strapdown.css } || {
+    cp -v jaroweb/js/strapdown.js views/js
+    cp -v jaroweb/css/strapdown.css views/css }
 
 { test -r config.zsh } || {
     cat <<EOF > config.zsh

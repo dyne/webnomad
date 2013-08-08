@@ -29,7 +29,7 @@ source utils
 bootstrap2="http://twitter.github.io/bootstrap/assets/bootstrap.zip"
 blueimp_gallery="https://github.com/blueimp/Gallery.git"
 
-
+{ test "$1" = "" } || { test "$1" = "bootstrap" } && {
 notice "Downloading and installing the latest Bootstrap2"
 act "url: $bootstrap2"
 curl "$bootstrap2" -o bootstrap.zip
@@ -39,7 +39,9 @@ rsync -r bootstrap/js .
 rsync -r bootstrap/img .
 rm -rf bootstrap bootstrap.zip
 act "Bootstrap2 installed"
+}
 
+{ test "$1" = "" } || { test "$1" = "blueimp" } && {
 notice "Downloading and installing BlueImp gallery"
 git clone ${blueimp_gallery} blueimp
 rsync -r blueimp/css .
@@ -47,4 +49,6 @@ rsync -r blueimp/js .
 rsync -r blueimp/img .
 rm -rf blueimp
 act "BlueImp installed"
+}
+
 
