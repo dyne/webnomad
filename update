@@ -1,8 +1,8 @@
 #!/usr/bin/env zsh
 #
-# Jaro Web, your slick and static website publisher
+# WebNomad, your slick and static website publisher
 #
-# Copyleft (C) 2012-2013 Denis Roio <jaromil@dyne.org>
+# Copyright (C) 2012-2013 Denis Roio <jaromil@dyne.org>
 #
 # This source  code is free  software; you can redistribute  it and/or
 # modify it under the terms of  the GNU Public License as published by
@@ -20,7 +20,7 @@
 
 
 { test -r init } || {
-    echo "Error: update must be run from inside the hipweb directory"
+    echo "Error: update must be run from inside the webnomad directory"
     return 1 }
 
 source utils

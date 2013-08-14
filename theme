@@ -1,8 +1,8 @@
 #!/usr/bin/env zsh
 #
-# Jaro Web, your slick and static website publisher
+# WebNomad, your slick and static website publisher
 #
-# Copyleft (C) 2012 Denis Roio <jaromil@dyne.org>
+# Copyright (C) 2012-2013 Denis Roio <jaromil@dyne.org>
 #
 # This source  code is free  software; you can redistribute  it and/or
 # modify it under the terms of  the GNU Public License as published by
@@ -18,10 +18,19 @@
 # this source code; if not, write to:
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-source jaroweb/utils
+
+DIR=`dirname $0`
+CMD=`basename $0`
+{ test -r $DIR } || {
+    echo "error: launch webnomad commands from your project directory"
+    echo "i.e: ./$DIR/$CMD"
+    return 1
+}
+
+source ${DIR}/utils
 
 { test -r config.zsh } || {
-    error "Directory not configured for Jaro Web. First use jaroweb init"
+    error "Directory not configured for WebNomad. First use ./webnomad/init"
     exit 1 }
 
 
@@ -29,18 +38,18 @@ source jaroweb/utils
 
 { test -z $1 } && {
   notice "List of available themes:"
-  for i in `ls jaroweb/themes`; do
+  for i in `ls ${DIR}/themes`; do
       act "$i"
   done
   exit 0
 }
 
-{ test -r jaroweb/themes/$1 } || {
+{ test -r ${DIR}/themes/$1 } || {
     error "Theme not found: $1"
     exit 1
 }
 
 notice "Installing theme: $1"
-cp jaroweb/themes/$1/bootstrap.min.css \
+cp ${DIR}/themes/$1/bootstrap.min.css \
     views/css/bootstrap.min.css
 exit 0

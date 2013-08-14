@@ -1,8 +1,8 @@
 #!/usr/bin/env zsh
 #
-# Jaro Web, your slick and static website publisher
+# WebNomad, your slick and static website publisher
 #
-# Copyleft (C) 2012-2013 Denis Roio <jaromil@dyne.org>
+# Copyright (C) 2012-2013 Denis Roio <jaromil@dyne.org>
 #
 # This source  code is free  software; you can redistribute  it and/or
 # modify it under the terms of  the GNU Public License as published by
@@ -18,7 +18,16 @@
 # this source code; if not, write to:
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-source jaroweb/utils
+DIR=`dirname $0`
+CMD=`basename $0`
+{ test -r $DIR } || {
+    echo "error: launch webnomad commands from your project directory"
+    echo "i.e: ./$DIR/$CMD"
+    return 1
+}
+
+
+source $DIR/utils
 
 
 mkdir -p views
@@ -39,49 +48,36 @@ EOF
 
 mkdir -p tmpl
 { test -r tmpl/header.html } || {
-    cp -v jaroweb/tmpl/header.html tmpl }
+    cp -v ${DIR}/tmpl/header.html tmpl }
 
 { test -r tmpl/footer.html } || {
-    cp -v jaroweb/tmpl/footer.html tmpl }
+    cp -v ${DIR}/tmpl/footer.html tmpl }
 
 { test -r tmpl/navbar.html } || {
-    cp -v jaroweb/tmpl/navbar.html tmpl }
+    cp -v ${DIR}/tmpl/navbar.html tmpl }
 
 { test -r views/js/html5.js } || {
-    cp -v jaroweb/js/html5.js views/js }
+    cp -v ${DIR}/js/html5.js views/js }
 
 { test -r views/css/bootstrap.css } || {
-    cp -v jaroweb/js/bootstrap* views/js
-    cp -v jaroweb/css/bootstrap* views/css }
+    cp -v ${DIR}/js/bootstrap* views/js
+    cp -v ${DIR}/css/bootstrap* views/css }
 
 { test -r views/css/blueimp-gallery.css } || {
-    cp -v jaroweb/js/*blueimp* views/js
-    cp -v jaroweb/css/*blueimp* views/css }
-
-{ test -r views/css/strapdown.css } || {
-    cp -v jaroweb/js/strapdown.js views/js
-    cp -v jaroweb/css/strapdown.css views/css }
+    cp -v ${DIR}/js/*blueimp* views/js
+    cp -v ${DIR}/css/*blueimp* views/css }
 
 { test -r config.zsh } || {
     cat <<EOF > config.zsh
-TITLE="A new website made with Jaro Web."
-BRAND="Jaro Web"
-DESCRIPTION="Jaro Web, your slick and static website publisher, powered by HTML5, Zsh and Bootstrap"
+TITLE="A new website made with WebNomad."
+BRAND="WebNomad"
+DESCRIPTION="WebNomad, your slick and static website publisher, powered by HTML5, Zsh and Bootstrap"
 KEYWORDS="web, design, html"
 EOF
 }
 
-{ test -r Makefile } || {
-    cat <<EOF > Makefile
-all:
-	@./jaroweb/render
 
-clean:
-	rm -rf pub
+notice "Website initialized"
+act "Now customize config.zsh and files in tmpl/"
+act "then create your pages in views/"
 
-upload:
-	@scp -r pub/.htaccess pub/* online.server.org:/var/www
-EOF
-}
-
-act "website initialized."

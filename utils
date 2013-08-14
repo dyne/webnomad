@@ -1,8 +1,8 @@
 #!/usr/bin/env zsh
 #
-# Jaro Web, your slick and static website publisher
+# WebNomad, your slick and static website publisher
 #
-# Copyleft (C) 2012-2013 Denis Roio <jaromil@dyne.org>
+# Copyright (C) 2012-2013 Denis Roio <jaromil@dyne.org>
 #
 # This source  code is free  software; you can redistribute  it and/or
 # modify it under the terms of  the GNU Public License as published by
@@ -45,10 +45,10 @@ if [[ ${@} == *-D* ]]; then DEBUG=1; fi
 # simplifying modes of operation: GNU or MAC
 case $(uname) in
     Linux) OS=GNU
-	notice "Jaro Mail v$VERSION running on GNU/Linux"	;;
+	notice "WebNomad v$VERSION running on GNU/Linux"	;;
 
     Darwin) OS=MAC
-	notice "Jaro Mail v$VERSION running on Mac/OSX"	;;
+	notice "WebNomad v$VERSION running on Mac/OSX"	;;
 
     *) OS=GNU # default
 	error "Running on an unknown operating system, assuming GNU" ;;
