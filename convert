@@ -28,17 +28,19 @@ CMD=`basename $0`
 
 source ${DIR}/utils
 
+DEBUG=1
+
 { test "$3" = "" } && {
-    error "usage: remaster [destination dir] [images dir] [commands]";
+    error "usage: $0 [destination dir] [images dir] [commands]";
     act "commands are imagemagick's convert commands"
     return 1 }
 
-dst="$1"; shift
-src="$1"; shift
+dst="$1"; shift 1
+src="$1"; shift 1
 
 act "source: $src"
 act "destination: $dst"
-act "convert args: ${=@}"
+act "convert args: ${@}"
 
 
 images=()
@@ -53,8 +55,9 @@ for i in $images; do
     destfile=`basename $i`
     # escape all weird characters in filenames
     destfile_sane=`print $destfile | sed -e "s@'@@g"`
-    act -n "resizing $destfile_sane ... "
-    convert $i ${=@} $dst/$destfile_sane
+    func "convert $i ${@} $dst/$destfile_sane (was $destfile)"
+    act -n "convert $destfile_sane ... "
+    convert $i ${@} $dst/$destfile_sane
     if [ $? = 0 ]; then
 	results+=($dst/$destfile_sane)
 	print " done"

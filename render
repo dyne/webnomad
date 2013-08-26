@@ -68,9 +68,9 @@ render_header() {
     <link href="css/bootstrap-responsive.min.css" rel="stylesheet" />
 
 EOF
-    { test -r views/css/style.css } && {
+    { test -r views/css/custom.css } && {
 cat <<EOF
-    <link href="css/style.css" rel="stylesheet" />
+    <link href="css/custom.css" rel="stylesheet" />
 
 EOF
 }
@@ -229,13 +229,12 @@ blueimp.Gallery(slides, {
 	carousel: true,
 	fullscreen: true,
 	closeOnEscape: true,
-	closeOnSlideClick: true,
 	closeOnSwipeUpOrDown: true,
 	startSlideshow: true,
 	slideshowInterval: 4500,
 });
 EOF
-
+# closeOnSlideClick: true,
 
 	includejs=(js/jquery.min.js)
 	includejs+=(js/bootstrap.min.js)

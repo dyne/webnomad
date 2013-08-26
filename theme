@@ -36,10 +36,26 @@ source ${DIR}/utils
 
 ####################################
 
+typeset -A themedesc
+
+themedesc[amelia]="colorful, blue background, red menu"
+themedesc[cerulean]="light, white background, blue menu"
+themedesc[readable]="light, white background, serif"
+themedesc[journal]="light, white background, uppercase sans"
+themedesc[cyborg]="dark, almost black, background"
+themedesc[slate]="dark gray background"
+themedesc[superhero]="dark blue background"
+themedesc[simplex]="light, white background, sans, red links"
+themedesc[spacelab]="light, white background, sans, gray widget menus"
+themedesc[spruce]="dark, gray background, serif"
+themedesc[united]="light, white background, sans, orange block menus"
+
+
+
 { test -z $1 } && {
   notice "List of available themes:"
   for i in `ls ${DIR}/themes`; do
-      act "$i"
+      act "$i : ${themedesc[$i]}"
   done
   exit 0
 }

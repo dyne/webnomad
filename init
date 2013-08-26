@@ -30,7 +30,8 @@ CMD=`basename $0`
 source $DIR/utils
 
 
-mkdir -p views
+mkdir -p views/js
+mkdir -p views/css
 { test -r views/index.html } || {
     cat <<EOF > views/index.html
 <h1>Hello world</h1>
