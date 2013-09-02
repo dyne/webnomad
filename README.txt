@@ -7,7 +7,14 @@
 
        http://dyne.org/software/webnomad
 
+* INTRODUCTION
 
+  WebNomad is a set of shell scripts to generate websites and image
+  galleries fit for desktop as well mobile and tablet browsing. It can
+  be operated on any device running ZShell, its themes are based on
+  Bootstrap CSS, pages can be written in Markdown syntax interlaced
+  into HTML, while it uses JQuery and BlueImp to make slideshows using
+  all files found into a directory.
 
 * USE INSTRUCTIONS 
 
