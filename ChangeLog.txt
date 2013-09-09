@@ -1,16 +1,20 @@
 0.2 - 2 September 2013
-	Refactoring based on bootstrap-2 and bootswatch themes
-	plus the blueimp gallery. Project renamed to WebNomad.
-	Used for the website of http://yurt.in
+
+	Refactoring based on bootstrap-2 and bootswatch themes plus
+	the blueimp gallery. Project renamed to WebNomad.  Possibility
+	to interlace <markdown> sections in HTML.  Slideshow functiond
+	developed and used for the website of http://yurt.in
 
 0.1 - 19 October 2012
-	Initial release following a minimalist design
-	and a directory structure inspired by ruby projects.
-	Called JaroWeb for lack of fantasy, first used to
-	create websites as the author's, as well stuff like
+
+	Initial release following a minimalist design and a directory
+	structure inspired by ruby projects.  Called JaroWeb for lack
+	of fantasy, first used to create websites as the author's
+	http://jaromil.dyne.org as well stuff like
 	http://pirati5stelle.it or http://democrazialiquida.eu
 
 Earlier around 2010
+
 	Various scripts descend from a rewrite of some Dyne.org
 	websites made by Jaromil and Hellekin in Ruysdael Squat.
 	
