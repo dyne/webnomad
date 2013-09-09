@@ -320,6 +320,8 @@ EOF
 cat <<EOF >> $dst
 </article>
 <p>&nbsp;</p>
+<p>&nbsp;</p>
+
 EOF
 
     includejs=(js/bootstrap.min.js)
