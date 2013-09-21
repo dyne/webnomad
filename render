@@ -18,18 +18,13 @@
 # this source code; if not, write to:
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-DIR=`dirname $0`
-CMD=`basename $0`
-{ test -r $DIR } || {
-    echo "error: launch webnomad commands from your project directory"
-    echo "i.e: ./$DIR/$CMD"
-    return 1
-}
+SYS=`dirname $0`
+source $SYS/utils
 
-source ${DIR}/utils
+
 
 { test -r config.zsh } || {
-    error "Directory not configured for WebNomad. First use ./webnomad/init"
+    error "Directory not configured for WebNomad. First use /webnomad/init"
     exit 1 }
 
 
@@ -37,8 +32,8 @@ source ${DIR}/utils
 
 source config.zsh
 
-notice "Rendering $BRAND website"
-act "Title: $TITLE"
+notice "Rendering $B $BRAND $r website"
+act "Title: $B $TITLE $r"
 
 typeset -a includejs
 
@@ -116,10 +111,11 @@ render_html() {
 # first pass marks the markdown parts and saves them separate
 
     mds=(`find . -name 'tmp.md*'`)
-    act -n "${#mds} markdown fields "
-
-    { test ${#mds} = 0 } || {
+    { test "${#mds}" = "0" } || {
 # second pass substituted saved parts with rendered markdown
+	act -n "${#mds} markdown fields "
+	
+
 
     for i in $mds; do
        md=`basename $i`
@@ -314,7 +310,7 @@ EOF
 EOF
 
     # render html
-    act -n "Html rendering: $dst "
+    act -n "Html rendering: $B $dst $r"
     cat $src | render_html >> $dst
 
 cat <<EOF >> $dst
@@ -336,13 +332,13 @@ gals=(`find views -type f -name '*.gal'`)
 for src in $gals; do
     cat ${src} | read_meta
     dst="pub/`basename ${src%.*}`"
-    act -n "Gallery rendering: $dst ... "
+    act -n "Gallery rendering: $B $dst $r ... "
     cat $src | render_gallery > $dst
     print "done"
 done
 
 for m in `find views -mindepth 1 -type d `; do
-    act -n "publishing $m... "
+    act -n "publishing $B $m $r ... "
     rsync -r $m pub/
     print "done"
 done
@@ -359,4 +355,6 @@ done
 }
 
 
-act "Website refreshed."
+notice "Website refreshed."
+
+{ test "$DIR" = "." } || { sleep 10 }

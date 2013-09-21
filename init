@@ -17,18 +17,18 @@
 # You should have received a copy of the GNU Public License along with
 # this source code; if not, write to:
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-
-DIR=`dirname $0`
-CMD=`basename $0`
-{ test -r $DIR } || {
-    echo "error: launch webnomad commands from your project directory"
-    echo "i.e: ./$DIR/$CMD"
-    return 1
-}
+SYS=`dirname $0`
+source $SYS/utils
 
 
-source $DIR/utils
 
+
+act "Initializing $B $DIR $r"
+pushd $DIR
+
+act "Below is the log of files copied into this directory."
+act "Init does not rewrite any existing file"
+act
 
 mkdir -p views/js
 mkdir -p views/css
@@ -49,24 +49,24 @@ EOF
 
 mkdir -p tmpl
 { test -r tmpl/header.html } || {
-    cp -v ${DIR}/tmpl/header.html tmpl }
+    cp -v ${SYS}/tmpl/header.html tmpl }
 
 { test -r tmpl/footer.html } || {
-    cp -v ${DIR}/tmpl/footer.html tmpl }
+    cp -v ${SYS}/tmpl/footer.html tmpl }
 
 { test -r tmpl/navbar.html } || {
-    cp -v ${DIR}/tmpl/navbar.html tmpl }
+    cp -v ${SYS}/tmpl/navbar.html tmpl }
 
 { test -r views/js/html5.js } || {
-    cp -v ${DIR}/js/html5.js views/js }
+    cp -v ${SYS}/js/html5.js views/js }
 
 { test -r views/css/bootstrap.css } || {
-    cp -v ${DIR}/js/bootstrap* views/js
-    cp -v ${DIR}/css/bootstrap* views/css }
+    cp -v ${SYS}/js/bootstrap* views/js
+    cp -v ${SYS}/css/bootstrap* views/css }
 
 { test -r views/css/blueimp-gallery.css } || {
-    cp -v ${DIR}/js/*blueimp* views/js
-    cp -v ${DIR}/css/*blueimp* views/css }
+    cp -v ${SYS}/js/*blueimp* views/js
+    cp -v ${SYS}/css/*blueimp* views/css }
 
 { test -r config.zsh } || {
     cat <<EOF > config.zsh
@@ -78,7 +78,12 @@ EOF
 }
 
 
-notice "Website initialized"
-act "Now customize config.zsh and files in tmpl/"
-act "then create your pages in views/"
+popd
 
+act
+notice "Initialization completed"
+act "Look in your new WebNomad project: $B $DIR $r"
+act "Customize $B config.zsh $r and then files in the $B tmpl/ $r folder"
+act "Create new HTML pages in $B views/ $r"
+
+{ test "$DIR" = "." } || { sleep 10 }
