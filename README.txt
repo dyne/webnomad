@@ -64,9 +64,9 @@
 
 ** IMAGE SLIDESHOW
 
-  To create an image slideshow simply create a page with extension
-  .gallery inside the views/ directory, for example one can call it
-  views/vacation_in_Italy.gallery
+  To create an image slideshow simply create a page with file extension
+  .gal inside the views/ directory, for example one can call it
+  views/vacation_in_Italy.gal
 
   To add images into it one should create a -files directory inside
   views/ better if named after the gallery page, something like:
