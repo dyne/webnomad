@@ -117,11 +117,18 @@ render_html() {
 	
 
 
+    # check which markdown parser is available in PATH
+    command -v markdown > /dev/null
+    if [ "$?" = "0" ]; then parser=markdown
+    else command -v multimarkdown > /dev/null
+    if [ "$?" = "0"]; then parser=multimarkdown; fi
+    fi
+
     for i in $mds; do
        md=`basename $i`
        newtemp="tmp.$RANDOM"
        cat $tmp | awk '
-/^'"$md"'/ { system("cat '"$md"' | markdown"); next }
+/^'"$md"'/ { system("cat '"$md"' | '"$parser"'"); next }
 { print $0; }' > $newtemp
        rm $tmp; tmp=$newtemp
     done
