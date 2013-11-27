@@ -74,6 +74,7 @@ TITLE="A new website made with WebNomad."
 BRAND="WebNomad"
 DESCRIPTION="WebNomad, your slick and static website publisher, powered by HTML5, Zsh and Bootstrap"
 KEYWORDS="web, design, html"
+EXTENSION=".html"
 EOF
 }
 

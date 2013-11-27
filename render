@@ -296,7 +296,7 @@ for src in $htmls; do
     cat ${src} | read_meta
 
     # compute destination file
-    dst="pub/`basename ${src%.*}`"
+    dst="pub/`basename ${src%.*}`${EXTENSION}"
 
     render_header > $dst
 
