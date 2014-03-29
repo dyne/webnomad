@@ -287,6 +287,15 @@ temps=(`find pub -type f -name 'temp-*'`)
 for t in $temps; do rm -f $t; done
 print "done"
 
+# publish all .txt files as-is
+# useful for robots.txt
+txts=(`find views -maxdepth 1 -type f -name '*.txt'`)
+for t in $txts; do
+    txt=`basename $t`
+    dst="pub/$txt"
+    act "publishing plain text: $txt"
+    cp $t pub/$txt
+done
 
 # render all HTML views
 htmls=(`find views -type f -name '*.html'`)
