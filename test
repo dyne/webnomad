@@ -53,8 +53,6 @@ EOF
     # start the body of article
     cat <<EOF >> $dst
 <p>&nbsp;</p>
-<a id="menu" href="#sidr">Design test</a>
-
 <article>
 EOF
 
@@ -68,25 +66,20 @@ cat <<EOF >> $dst
 
 <script type="text/javascript" src="js/jquery.min.js"></script>
 <script type="text/javascript" src="js/jquery.sidr.js"></script>
+<script type="text/javascript" src="js/jquery.fontswitch.js"></script>
 
+<a id="menu" href="#sidr">Design test</a>
  
 <div id="sidr">
   <h2>Design test</h2>
   <h3>Font size</h3>
   <ul>
-    <li><select id="h1size" name="size">
-<option value="2">2</option>
-<option value="4">4</option>
-<option value="6">6</option>
-</select></li>
+    <li><a href="#" id="smaller">smaller</a><li><a href="#" id="bigger">bigger</a></li>
   </ul>
-
   <h3>Font family</h3>
-<select id="headerfamily" name="header font family">
-<option value="Arial">Arial</option>
-<option value="Courier">Courier</option>
-</select>
-
+  <ul>
+    <li><a href="#" id="h1courier">Courier</a></li>
+  </ul>
 </div>
 
 <script>
@@ -97,8 +90,8 @@ cat <<EOF >> $dst
      displace: false
 });
 });
-\$('#h1size').change(function() { \$('h1').css('font-size', \$('#h1size').val() + "em" ); })
-\$('#headerfamily').change(function(){ \$('h1').css('font-family', \$('#headerfamily').val() ); })
+
+\$('#h1courier').click(function(){ change_family(\$('h1'), 'Courier'); })
 </script>
 
 EOF
@@ -120,3 +113,4 @@ done
 mkdir -p test/js
 cp $DIR/js/jquery.min.js test/js
 cp $DIR/js/jquery.sidr.js test/js
+cp $DIR/js/jquery.fontswitch.js test/js
