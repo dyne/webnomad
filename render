@@ -79,15 +79,6 @@ EOF
 
     cat tmpl/header.html
 
-    cat <<EOF
-</head> <!-- end of <head> -->
-
-<body>
-  <div class="container">
-EOF
-
-    cat tmpl/navbar.html
-
 }
 
 render_footer() {
@@ -150,7 +141,20 @@ render_html() {
 
 render_gallery() {
 
-    render_header "<link rel=\"stylesheet\" href=\"css/blueimp-gallery.min.css\" />"
+    render_header
+
+    # close <head> with gallery specific styles
+    cat <<EOF >> $dst
+    <link rel="stylesheet" href="css/blueimp-gallery.min.css" />
+
+</head> <!-- end of <head> -->
+
+<body>
+  <div class="container">
+EOF
+
+    # don't forget the navbar
+    cat tmpl/navbar.html
 
     cat <<EOF
 <!-- The Gallery as lightbox dialog, should be a child element of the document body -->
@@ -292,6 +296,18 @@ for src in $htmls; do
     dst="pub/`basename ${src%.*}`"
 
     render_header > $dst
+
+    # close <head> as nothing else is needed
+    cat <<EOF >> $dst
+</head> <!-- end of <head> -->
+
+<body>
+  <div class="container">
+EOF
+
+    # don't forget the navbar
+    cat tmpl/navbar.html >> $dst
+
     cat <<EOF >> $dst
 <p>&nbsp;</p>
 <article>
