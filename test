@@ -25,6 +25,32 @@ source ${DIR}/render source
 # Main
 
 mkdir -p test
+mkdir -p test/css
+# side menu stylesheet
+cp $DIR/css/jquery.sidr.dark.css test/css
+
+fonts=('Arial' 'Arial Black' 'Comic Sans MS' 'Courier New' 'Georgia' 'Impact' 'Monaco' 'Lucida Grande')
+fonts+=('Book Antiqua' 'Tahoma' 'Times New Roman' 'Trebuchet MS' 'Verdana' 'Geneva' 'New York')
+custom_fonts=()
+
+# if there are custom fonts add them
+{ test -d fonts } && {
+    rm -f test/css/custom.fonts.css
+    mkdir -p test/fonts
+    ttf=`find fonts -name '*.ttf'`
+    for f in ${(f)ttf}; do
+	ffile=`basename "$f"`
+	cp "$f" test/css/"$ffile"
+	custom_fonts+=("${ffile%.ttf}")
+	cat <<EOF >> test/css/custom.fonts.css
+	@font-face { font-family: '${ffile%.ttf}';
+             src: url('$ffile') format('truetype'); }
+EOF
+    done
+}
+
+fonts=($custom_fonts $fonts)
+
 # render all HTML views
 htmls=(`find views -type f -name '*.html'`)
 for src in $htmls; do
@@ -40,6 +66,7 @@ for src in $htmls; do
     cat <<EOF >> $dst
 
 <link rel="stylesheet" href="css/jquery.sidr.dark.css">
+<link rel="stylesheet" href="css/custom.fonts.css">
 
 </head> <!-- end of <head> -->
 
@@ -71,17 +98,73 @@ cat <<EOF >> $dst
 
  
 <div id="sidr">
-  <h2>Design test</h2>
-  <h3>Font size</h3>
-  <ul>
-    <li><a href="#" id="smaller">smaller</a><li><a href="#" id="bigger">bigger</a></li>
-  </ul>
+  <h3>Design test</h3>
+EOF
 
-  <h3>Font family</h3>
-<select id="headerfamily" name="header font family">
-<option value="Arial">Arial</option>
-<option value="Courier">Courier</option>
+
+# Font size selector
+
+font-size_select() {
+    cat <<EOF
+ <select id="$1" name="$1-font-size">
+EOF
+    c=.5
+    while [[ $c -le 8 ]]; do
+	cat <<EOF
+<option value="${c%.}">${c%.} em</option>
+EOF
+	c=$(( $c + .5 ))
+    done
+    cat <<EOF
 </select>
+EOF
+}
+
+print  "<h4>H1 font size</h3>" >> $dst
+font-size_select h1size >> $dst
+
+print  "<h4>H2 font size</h3>" >> $dst
+font-size_select h2size >> $dst
+
+
+
+# font family selector
+
+font-family_select() {
+	cat <<EOF
+<select id="$1" name="$1-font-family">
+EOF
+    for f in $fonts; do
+	cat <<EOF
+<option value="$f">$f</option>
+EOF
+    done
+    print "</select>"
+}
+	
+
+cat <<EOF >> $dst
+  <h3>Brand font family</h3>
+EOF
+font-family_select brand-font-family >> $dst
+
+cat <<EOF >> $dst
+  <h3>Header font family</h3>
+EOF
+font-family_select header-font-family >> $dst
+
+cat <<EOF >> $dst
+  <h3>Body font family</h3>
+EOF
+font-family_select body-font-family >> $dst
+
+cat <<EOF >> $dst
+  <h3>Navigation Font family</h3>
+EOF
+font-family_select nav-font-family >> $dst
+
+
+cat <<EOF  >> $dst
 
 </div>
 
@@ -94,7 +177,17 @@ cat <<EOF >> $dst
 });
 });
 \$('#h1size').change(function() { \$('h1').css('font-size', \$('#h1size').val() + "em" ); })
-\$('#headerfamily').change(function(){ \$('h1').css('font-family', \$('#headerfamily').val() ); })
+\$('#h2size').change(function() { \$('h2').css('font-size', \$('#h2size').val() + "em" ); })
+
+\$('#brand-font-family').change(function(){ \$('.navbar .brand').css('font-family', \$('#brand-font-family').val() ); })
+
+\$('#header-font-family').change(function(){ \$('h1').css('font-family', \$('#header-font-family').val() ); })
+\$('#header-font-family').change(function(){ \$('h2').css('font-family', \$('#header-font-family').val() ); })
+
+\$('#body-font-family').change(function(){ \$('body').css('font-family', \$('#body-font-family').val() ); })
+
+\$('#nav-font-family').change(function(){ \$('nav div div ul li a').css('font-family', \$('#nav-font-family').val() ); })
+
 </script>
 
 EOF
@@ -116,4 +209,3 @@ done
 mkdir -p test/js
 cp $DIR/js/jquery.min.js test/js
 cp $DIR/js/jquery.sidr.js test/js
-cp $DIR/css/jquery.sidr.dark.css test/css
