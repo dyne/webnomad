@@ -21,10 +21,7 @@ SYS=`dirname $0`
 source $SYS/utils
 
 
-
-
-act "Initializing $B $DIR $r"
-pushd $DIR
+act "Initializing Webnomad"
 
 act "Below is the log of files copied into this directory."
 act "Init does not rewrite any existing file"
@@ -87,4 +84,3 @@ act "Look in your new WebNomad project: $B $DIR $r"
 act "Customize $B config.zsh $r and then files in the $B tmpl/ $r folder"
 act "Create new HTML pages in $B views/ $r"
 
-{ test "$DIR" = "." } || { sleep 10 }

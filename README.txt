@@ -64,9 +64,9 @@
 
 ** IMAGE SLIDESHOW
 
-  To create an image slideshow simply create a page with file extension
-  .gal inside the views/ directory, for example one can call it
-  views/vacation_in_Italy.gal
+  To create an image slideshow simply create a page with file
+  extension .gal or .gallery inside the views/ directory, for example
+  one can call it views/vacation_in_Italy.gal
 
   To add images into it one should create a -files directory inside
   views/ better if named after the gallery page, something like:
@@ -89,6 +89,25 @@
 
   At last run webnomad/render and the slideshow will be ready at the
   page in pub/ which in our case is pub/vacation_in_Italy.
+
+## DIRECTORY INDEXES
+
+   Using webnomad One can also create static web pages indexing all
+   files into any filesystem directories recursively, making thumbnail
+   previews of images and linking to the originals.
+
+   In order to do so create a file in views with extension .idx or
+   .index, then fill it in with the needed configurations, for
+   instance a file `my_pictures_folder.index` can contain
+
+```
+index /home/jaromil/pics
+```
+
+   This will produce a `pub/my_pictures_folder.html` file which will
+   list all files inside that directory with previews and further
+   links to subfolders that are indexed the same way.
+
 
 * DEVELOPERS
 

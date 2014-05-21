@@ -200,7 +200,7 @@ EOF
     pics=`grep -v '^#'`
     for p in ${(f)pics}; do
 	file=${p[(ws: :)1]}
-	desc=`echo $p | awk '{ for(c=2;c<=NF;c++) printf("%s ",$c) }'`
+	desc=`pecho $p | awk '{ for(c=2;c<=NF;c++) printf("%s ",$c) }'`
 	cat << EOF >> pub/$dst_js
 slides.push({
 	href: '${file}',
@@ -258,6 +258,23 @@ EOF
 
 	render_footer
 
+}
+
+index() {
+#    render_header "<link rel=\"stylesheet\" href=\"css/blueimp-gallery.min.css\" />"
+    { test -d "$1" } || { error "cannot index directory not found: $1"; return 1 }
+    source $SYS/index source
+    dirs=`find "$1" -type d`
+    base=`dirname "$1"`
+    for d in ${(f)dirs}; do
+	dir="${d##*${base}}"
+	mkdir -p "pub/$dir"
+	render_header > "pub/$dir/index.html"
+	pushd "pub/$dir"
+	index_dir "$d" >> index.html
+	popd
+	render_footer >> "pub/$dir/index.html"
+    done
 }
 
 read_meta() {
@@ -345,6 +362,7 @@ done
 
 # render all image galleries
 gals=(`find views -type f -name '*.gal'`)
+gals+=(`find views -type f -name '*.gallery'`)
 for src in $gals; do
     cat ${src} | read_meta
     dst="pub/`basename ${src%.*}`"
@@ -352,6 +370,16 @@ for src in $gals; do
     cat $src | render_gallery > $dst
     print "done"
 done
+
+
+# render all directory indexes
+idxs=(`find views -type f -name '*.idx'`)
+idxs+=(`find views -type f -name '*.index'`)
+for idx in $idxs; do
+    notice "Directory index rendering: $idx"
+    source ${idx}
+done
+
 
 for m in `find views -mindepth 1 -type d `; do
     act -n "publishing $B $m $r ... "
@@ -373,4 +401,4 @@ done
 
 notice "Website refreshed."
 
-{ test "$DIR" = "." } || { sleep 10 }
+# { test "$DIR" = "." } || { sleep 10 }
