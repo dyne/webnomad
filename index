@@ -24,7 +24,6 @@ VERSION=0.1
 QUIET=0
 RECURSIVE=0
 PARAM=()
-LINK_PREFIX=""
 
 autoload colors; colors
 
@@ -72,6 +71,61 @@ typeset -alU files
 
 # TODO
 usage() { act "no help ATM sry" }
+filetype_icon() {
+
+    { test "$1" = "" } && { error "filetype_icon called without argument"; return 1 }
+
+    path=""
+    filename="$1"
+    { test -r "$1" } && {
+	act "fuletype_icon: argument is not a real path, skipping mimecheck"
+	path="$1"
+	filename="${path##*/}"
+    }
+
+    ext="${filename##*.}"
+    name="${filename%%.*}"
+    res="default.jpg"
+
+    # analize extensions, will be overridden by name
+    case $ext:l in
+	txt) res=text-plain.jpg ;;
+	html) res=text-x-html.jpg ;;
+	xml) res=text-xml.jpg ;;
+	md5|sha*) res=hash.jpg ;;
+	asc|gpg) res=signature.jpg ;;
+	tex|md|org) res=text-x-texinfo.jpg ;;
+	patch) res=text-x-patch.jpg ;;
+	sql) res=text-x-sql.jpg ;;
+	vcart) res=text-x-vcard.jpg ;;
+	dmg) res=dmg.png ;;
+    esac
+    # analize name
+    case $name:l in
+	changelog) res=text-x-changelog.jpg ;;
+	readme) res=text-x-readme.jpg ;;
+	install) res=text-x-install.jpg ;;
+	authors) res=text-x-authors.jpg ;;
+	makefile) res=text-x-makefile.jpg ;;
+	news|usage) res=text-x-nfo.jpg ;;
+	copying) res=text-x-copying.jpg ;;
+	known_bugs|todo) res=text-x-log.jpg ;;
+    esac
+
+    # check physical file properties
+    { test "$path" = "" } || {
+	# is a directory
+	{ test -d "$path" } && {
+	    case $name:l in
+		sources) res=folder-development.jpg ;;
+		doc|docs) res=folder-documents.jpg ;;
+		releases|binaries) res=folder-downloads.jpg ;;
+	    esac
+	}
+	# todo using mimetype -b and more
+    }
+}
+
 index_dir() {
     { test -d "$1" } || { error "cannot index: not a directory '$1'"; return 1 }
     files=()
@@ -85,11 +139,28 @@ index_dir() {
 	return 1 }
 
     eval "$ttmp"
-    act "${#files} files parsed in dir $1"
+
+    act "${#files} files parsed in $1"
+
+    # setup paths for test
+    { test "$destination" = "test" } && {
+	LINK_PREFIX="file://$1"
+	act "LINK_PREFIX = $LINK_PREFIX"
+    }
+
+    # human size dividers
+    _mb=$((1024 * 1024))
+    _gb=$((1024 * 1024 * 1024))
 
     cat <<EOF
 <table class="table table-hover table-condensed">
-<thead><tr><th>Filename</th><th>Size</th><th>Date</th><th><!-- preview --></th></tr></thead>
+<thead><tr>
+<th class="col-sm-1 col-md-1 col-lg-1"><!-- filetype icon --></th>
+<th class="col-sm-4 col-md-4 col-lg-4">Filename</th>
+<th class="col-sm-1 col-md-2 col-lg-3">Size</th>
+<th class="col-sm-1 col-md-2 col-lg-3">Date</th>
+<th class="col-sm-3 col-md-4 col-lg-5">Preview</th>
+</tr></thead>
 EOF
     for f in ${files}; do
 	name="${f[(ws:;:)1]}"
@@ -99,32 +170,76 @@ EOF
 	ext="${name##*.}" # file extension
 	file="${1}/${name}" # file path
 
+	# format size to human readable form
+	if [[ $size -lt 1024 ]]; then hsize="$size B"
+	elif [[ $size -gt 1024 ]]; then hsize="$(( $size / 1024 )) KB"
+	elif [[ $size -gt 1048576 ]]; then hsize="$(( $size / $mb )) MB"
+	else hsize="$(( $size / $gb )) GB"
+	fi
+
+	# format date to human readable form
+	hdate=`date -d "$date" +'%d %b %Y'`
+
 	func "$name \t $size \t $date"
+
+	typefield=""
+	namefield=""
+	previewfield=""
+	link=""
+	icon=""
 
 	preview=`preview_file "$file"`
 
-	link="$name"
-	# link ${file}.html if its existing, else link file directly
-	{ test -r "${name%%.*}.html" } && { link="${name%%.*}.html" }
-
 	{ test "$preview" = "" } || {
 	    func "file preview produced"
-
 	    case $ext:l in
-		jpg|jpeg|png|gif|pdf)
+		jpg|jpeg|png|gif|pdf|svg|eps)
 		    func "preview is a thumbnail"
-		    preview="<img src=\"$preview\" alt=\"$name\" title=\"$name\">" ;;
+		    preview="<img src=\"$preview\" alt=\"$name\" title=\"$name\">"
+		    icon="image.jpg"
+		;;
 	    esac
 	}
-	    
-cat <<EOF
+
+	icon_width="width=\"50px\""
+
+	if [ -L "$file" ]; then # is a symlink
+	    if [ -d "$file" ]; then # symlink to folder
+		link="<a href=\"${name}/index.html\">"
+		typefield="${link}<img src=\"${WEB_ROOT}/icons/symlink.jpg\" alt=\"symlink\" ${icon_width}></a>"
+		namefield="${link}${name}</a>"
+		previewfield="<!-- folder -->"
+	    else                    # symlink to file
+		link="<a href=\"${LINK_PREFIX}/${link}\">"
+		typefield="${link}<img src=\"${WEB_ROOT}/icons/symlink.jpg\" alt=\"symlink\" ${icon_width}></a>"
+		namefield="${link}${name}</a>"
+		previewfield="${link}${preview}</a>"
+	    fi
+	elif [ -d "$file" ]; then   # is a folder
+	    link="<a href=\"${name}/index.html\">"
+	    typefield="${link}<img src=\"${WEB_ROOT}/icons/folder.jpg\" alt=\"folder\" ${icon_width}></a>"
+	    namefield="${link}${name}</a>"
+	    previewfield="<!-- folder -->"
+	else                        # is a file
+	    { test "$icon" = "" } && { icon="`filetype_icon ${file}`" }
+	    link="<a href=\"${LINK_PREFIX}/${link}\">"
+	    typefield="${link}<img src=\"${WEB_ROOT}/icons/${icon}\" alt=\"${icon}\" ${icon_width}></a>"
+	    namefield="${link}${name}</a>"
+	    previewfield="${link}${preview}</a>"
+	fi
+
+	# render it all
+	cat <<EOF
 <tr>
-<td><a href="${LINK_PREFIX}${link}">${name}</a></td>
-<td>$size</td><td>$date</td>
-<td><a href="${LINK_PREFIX}${link}">$preview</a></td></tr>
+<td style="vertical-align:middle;">${typefield}</td>
+<td style="vertical-align:middle;font-size:2em">${namefield}</td>
+<td style="vertical-align:middle">$hsize</td>
+<td style="vertical-align:middle">$hdate</td>
+<td style="vertical-align:middle">${previewfield}</td>
+</tr>
 EOF
     done
-print "</table>"
+    print "</table>"
 }
 
 preview_file() {
@@ -144,7 +259,7 @@ preview_file() {
 		maruku --html --html-frag $f -o "$output"
 		print "$output"
 		;;
-	    jpg|jpeg|png|gif) 
+	    jpg|jpeg|png)
 		output="${name}-thumb.${ext}"
 		{ test -r "$output" } && {
 		    act "$f: thumbnail found, skip rendering"
@@ -154,7 +269,7 @@ preview_file() {
 		convert $f -resize 100 $output
 		print "$output"
 		;;
-	    pdf)
+	    pdf|gif) # only first page / animation frame
 		output="${name}-thumb.jpg"
 		{ test -r "$output" } && {
 		    act "$f: thumbnail found, skip rendering"
@@ -164,6 +279,17 @@ preview_file() {
 		convert "${f}[0]" -resize 100 $output
 		print "$output"
 		;;
+	    svg|eps)
+		output="${name}-thumb.jpg"
+		{ test -r "$output" } && {
+		    act "$f: thumbnail found, skip rendering"
+		    print "$output"
+		    continue }
+		notice "$f: rendering thumbnail using ImageMagick"
+		convert -density 144 "${f}" -resize 100 $output
+		print "$output"
+		;;
+
 	esac
     done
     return 0

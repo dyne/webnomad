@@ -22,12 +22,16 @@ act "Title: $TITLE"
 
 source ${DIR}/render source
 
+# make it work to browse results on file://
+baseurl="file://`pwd`/test/"
+
+destination="test"
+
 # Main
 
-mkdir -p test
-mkdir -p test/css
+mkdir -p ${destination}/css
 # side menu stylesheet
-cp $DIR/css/jquery.sidr.dark.css test/css
+cp $DIR/css/jquery.sidr.dark.css ${destination}/css
 
 fonts=('Arial' 'Arial Black' 'Comic Sans MS' 'Courier New' 'Georgia' 'Impact' 'Monaco' 'Lucida Grande')
 fonts+=('Book Antiqua' 'Tahoma' 'Times New Roman' 'Trebuchet MS' 'Verdana' 'Geneva' 'New York')
@@ -39,14 +43,14 @@ unsetopt CASE_GLOB
 # if there are custom fonts add them
 { test -d fonts } && {
     notice "Indexing custom fonts"
-    rm -f test/css/custom.fonts.css
-    mkdir -p test/fonts
+    rm -f ${destination}/css/custom.fonts.css
+    mkdir -p ${destination}/fonts
     ttf=`find -L fonts -iname '*.ttf'`
     for f in ${(f)ttf}; do
 	ffile=`basename "$f"`
-	cp "$f" test/css/"$ffile"
+	cp "$f" ${destination}/css/"$ffile"
 	custom_fonts+=("${ffile%.ttf}")
-	cat <<EOF >> test/css/custom.fonts.css
+	cat <<EOF >> ${destination}/css/custom.fonts.css
 	@font-face { font-family: '${ffile%.ttf}';
              src: url('$ffile') format('truetype'); }
 EOF
@@ -55,9 +59,9 @@ EOF
     otf=`find -L fonts -iname '*.otf'`
     for f in ${(f)otf}; do
 	ffile=`basename "$f"`
-	cp "$f" test/css/"$ffile"
+	cp "$f" ${destination}/css/"$ffile"
 	custom_fonts+=("${ffile%.otf}")
-	cat <<EOF >> test/css/custom.fonts.css
+	cat <<EOF >> ${destination}/css/custom.fonts.css
 	@font-face { font-family: '${ffile%.otf}';
              src: url('$ffile') format('opentype'); }
 EOF
@@ -77,8 +81,8 @@ for src in $htmls; do
     cat ${src} | read_meta
 
     # compute destination file
-    dst="test/`basename ${src%.*}`$EXTENSION"
-
+    dst="${destination}/`basename ${src%.*}`$EXTENSION"
+    
     render_header > $dst
 
     # close <head> as nothing else is needed
@@ -220,11 +224,24 @@ done
 
 for m in `find views -mindepth 1 -type d `; do
     act -n "publishing $m... "
-    rsync -r $m test/
+    rsync -r $m ${destination}/
     print "done"
 done
 
 # add design test libs
-mkdir -p test/js
-cp $DIR/js/jquery.min.js test/js
-cp $DIR/js/jquery.sidr.js test/js
+mkdir -p ${destination}/js
+cp $DIR/js/jquery.min.js ${destination}/js
+cp $DIR/js/jquery.sidr.js ${destination}/js
+
+
+
+#### directory index
+idxs=(`find views -type f -name '*.idx'`)
+idxs+=(`find views -type f -name '*.index'`)
+{ test ${#idxs} = 0 } || {
+    for idx in $idxs; do
+	notice "Directory index rendering: $idx"
+	source ${idx}
+    done
+    rsync -rlt "$DIR/icons" "${destination}/"
+}

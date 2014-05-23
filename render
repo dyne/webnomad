@@ -29,13 +29,31 @@ source $SYS/utils
 
 
 ####################################
-
-source config.zsh
-
+# Base configuration
 notice "Rendering $B $BRAND $r website"
 act "Title: $B $TITLE $r"
 
 typeset -a includejs
+
+# base to be added to all urls
+# used by test to have all css and js in place
+baseurl=""
+
+# destination directory to render
+# also used by test to substitute pub/
+destination="pub"
+
+# web root for all urls
+WEB_ROOT=""
+
+# prefix to all indexed files
+INDEX_PREFIX=""
+
+# thumbnail size
+THUMB_SIZE=256
+
+source config.zsh
+####################################
 
 
 render_header() {
@@ -59,13 +77,13 @@ render_header() {
 
 <!-- Bootstrap -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link href="css/bootstrap.min.css" rel="stylesheet" />
-    <link href="css/bootstrap-responsive.min.css" rel="stylesheet" />
+    <link href="${baseurl}css/bootstrap.min.css" rel="stylesheet" />
+    <link href="${baseurl}css/bootstrap-responsive.min.css" rel="stylesheet" />
 
 EOF
     { test -r views/css/custom.css } && {
 cat <<EOF
-    <link href="css/custom.css" rel="stylesheet" />
+    <link href="${baseurl}css/custom.css" rel="stylesheet" />
 
 EOF
 }
@@ -86,7 +104,7 @@ EOF
     { test "$1" = "" } || { echo "${@}"; echo }
 
     for i in $includejs; do
-	echo "<script src=\"$i\"></script>"
+	echo "<script src=\"${baseurl}$i\"></script>"
     done
 
 cat <<EOF
@@ -148,7 +166,7 @@ render_gallery() {
 
     # close <head> with gallery specific styles
     cat <<EOF >> $dst
-    <link rel="stylesheet" href="css/blueimp-gallery.min.css" />
+    <link rel="stylesheet" href="${baseurl}css/blueimp-gallery.min.css" />
 
 </head> <!-- end of <head> -->
 
@@ -192,7 +210,7 @@ EOF
 # generate the gallery's javascript
     dst_js="js/temp-${RANDOM}-gallery.js"
 
-    cat <<EOF > pub/${dst_js}
+    cat <<EOF > ${destination}/${dst_js}
 var slides= [];
 EOF
 
@@ -201,7 +219,7 @@ EOF
     for p in ${(f)pics}; do
 	file=${p[(ws: :)1]}
 	desc=`pecho $p | awk '{ for(c=2;c<=NF;c++) printf("%s ",$c) }'`
-	cat << EOF >> pub/$dst_js
+	cat << EOF >> ${destination}/$dst_js
 slides.push({
 	href: '${file}',
 	title: '${desc}'
@@ -209,7 +227,7 @@ slides.push({
 EOF
     done
 
-    cat <<EOF >> pub/$dst_js
+    cat <<EOF >> ${destination}/$dst_js
 
 function shuffle(array) {
   var m = array.length, t, i;
@@ -265,15 +283,44 @@ index() {
     { test -d "$1" } || { error "cannot index directory not found: $1"; return 1 }
     source $SYS/index source
     dirs=`find "$1" -type d`
-    base=`dirname "$1"`
+    basedir=`dirname "$1"`
+
+    # setup paths for test
+    { test "$destination" = "test" } && {
+	LINK_PREFIX="file://$1"
+	WEB_ROOT="file://`PWD=${SYS} pwd`/test"
+	notice "Test settings for indexing"
+	act "SYS = $SYS"
+	act "WEB_ROOT = $WEB_ROOT"
+    }
+
     for d in ${(f)dirs}; do
-	dir="${d##*${base}}"
-	mkdir -p "pub/$dir"
-	render_header > "pub/$dir/index.html"
-	pushd "pub/$dir"
+	dir="${d##*${basedir}}"
+	mkdir -p "${destination}/$dir"
+	render_header > "${destination}/$dir/index.html"
+	cat tmpl/navbar.html >> "${destination}/$dir/index.html"
+	pushd "${destination}/$dir"
+	cat <<EOF >> index.html
+<div class="container-fluid">
+  <div class="span6">
+EOF
+	
 	index_dir "$d" >> index.html
+	# if there is a README put it besides
+	{ test -r "${d}/README.md" } && {
+	    cat <<EOF >> index.html
+  </div>
+  <div class="span3">
+EOF
+	    maruku --html --html-frag -o - "${d}/README.md" >> index.html
+	}
+	cat <<EOF  >> index.html
+  </div>
+</div>
+<p>&nbsp;</p>
+EOF
 	popd
-	render_footer >> "pub/$dir/index.html"
+	render_footer >> "${destination}/$dir/index.html"
     done
 }
 
@@ -294,7 +341,7 @@ read_meta() {
 # Main
 
 mkdir -p pub
-cat << EOF > pub/.htaccess
+cat << EOF > ${destination}/.htaccess
 DirectoryIndex index index.html index.php
 DefaultType text/html
 EOF
@@ -309,9 +356,9 @@ print "done"
 txts=(`find views -maxdepth 1 -type f -name '*.txt'`)
 for t in $txts; do
     txt=`basename $t`
-    dst="pub/$txt"
+    dst="${destination}/$txt"
     act "publishing plain text: $txt"
-    cp $t pub/$txt
+    cp $t ${destination}/$txt
 done
 
 # render all HTML views
@@ -322,7 +369,7 @@ for src in $htmls; do
     cat ${src} | read_meta
 
     # compute destination file
-    dst="pub/`basename ${src%.*}`${EXTENSION}"
+    dst="${destination}/`basename ${src%.*}`${EXTENSION}"
 
     render_header > $dst
 
@@ -365,7 +412,7 @@ gals=(`find views -type f -name '*.gal'`)
 gals+=(`find views -type f -name '*.gallery'`)
 for src in $gals; do
     cat ${src} | read_meta
-    dst="pub/`basename ${src%.*}`"
+    dst="${destination}/`basename ${src%.*}`"
     act -n "Gallery rendering: $B $dst $r ... "
     cat $src | render_gallery > $dst
     print "done"
@@ -383,7 +430,7 @@ done
 
 for m in `find views -mindepth 1 -type d `; do
     act -n "publishing $B $m $r ... "
-    rsync -r $m pub/
+    rsync -r $m ${destination}/
     print "done"
 done
 
@@ -395,7 +442,7 @@ done
     # generate a list of all images (removing duplicates)
     act "Indexing all images ... "
     find pub -iname '*.jpg' | sed -e 's/^pub\///g' -e 's/^.\/pub\///g' -e "s@'@@g" | sort | uniq \
-	| render_gallery views/index.html > pub/index
+	| render_gallery views/index.html > ${destination}/index
 }
 
 
