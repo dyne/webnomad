@@ -86,7 +86,8 @@ cat <<EOF
      name: 'sidr',
      side: 'right',
      displace: false
-});
+  });
+  \$.sidr('open');
 });
 \$('#h1size').change(function() { \$('h1').css('font-size', \$('#h1size').val() + "em" ); })
 \$('#h2size').change(function() { \$('h2').css('font-size', \$('#h2size').val() + "em" ); })
@@ -99,6 +100,7 @@ cat <<EOF
 \$('#body-font-family').change(function(){ \$('body').css('font-family', \$('#body-font-family').val() ); })
 
 \$('#nav-font-family').change(function(){ \$('nav div div ul li a').css('font-family', \$('#nav-font-family').val() ); })
+
 
 </script>
 

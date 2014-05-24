@@ -37,57 +37,46 @@ typeset -alU files
 
 filetype_icon() {
 
-    { test "$1" = "" } && { error "filetype_icon called without argument"; return 1 }
+    { test "$1" = "" } && { 
+	error "filetype_icon called without argument"; return 1 }
 
-    path=""
-    filename="$1"
-    { test -r "$1" } && {
-	act "fuletype_icon: argument is not a real path, skipping mimecheck"
-	path="$1"
-	filename="${path##*/}"
-    }
+    path="$1"
+    filename="${path##*/}"
 
     ext="${filename##*.}"
     name="${filename%%.*}"
-    res="default.jpg"
+    res="default.png"
 
     # analize extensions, will be overridden by name
     case $ext:l in
-	txt) res=text-plain.jpg ;;
-	html) res=text-x-html.jpg ;;
-	xml) res=text-xml.jpg ;;
-	md5|sha*) res=hash.jpg ;;
-	asc|gpg) res=signature.jpg ;;
-	tex|md|org) res=text-x-texinfo.jpg ;;
-	patch) res=text-x-patch.jpg ;;
-	sql) res=text-x-sql.jpg ;;
-	vcart) res=text-x-vcard.jpg ;;
+	txt) res=text-plain.png ;;
+	html) res=text-x-html.png ;;
+	xml) res=text-xml.png ;;
+	md5|sha*) res=hash.png ;;
+	asc|gpg) res=signature.png ;;
+	tex|md|org) res=text-x-texinfo.png ;;
+	patch) res=text-x-patch.png ;;
+	sql) res=text-x-sql.png ;;
+	vcart) res=text-x-vcard.png ;;
 	dmg) res=dmg.png ;;
     esac
     # analize name
     case $name:l in
-	changelog) res=text-x-changelog.jpg ;;
-	readme) res=text-x-readme.jpg ;;
-	install) res=text-x-install.jpg ;;
-	authors) res=text-x-authors.jpg ;;
-	makefile) res=text-x-makefile.jpg ;;
-	news|usage) res=text-x-nfo.jpg ;;
-	copying) res=text-x-copying.jpg ;;
-	known_bugs|todo) res=text-x-log.jpg ;;
+	changelog) res=text-x-changelog.png ;;
+	readme) res=text-x-readme.png ;;
+	install) res=text-x-install.png ;;
+	authors) res=text-x-authors.png ;;
+	makefile) res=text-x-makefile.png ;;
+	news|usage) res=text-x-nfo.png ;;
+	copying) res=text-x-copying.png ;;
+	known_bugs|todo) res=text-x-log.png ;;
+	sources) res=folder-development.png ;;
+	doc|docs) res=folder-documents.png ;;
+	releases|binaries) res=folder-downloads.png ;;
     esac
+    # todo using mimetype -b and more
 
-    # check physical file properties
-    { test "$path" = "" } || {
-	# is a directory
-	{ test -d "$path" } && {
-	    case $name:l in
-		sources) res=folder-development.jpg ;;
-		doc|docs) res=folder-documents.jpg ;;
-		releases|binaries) res=folder-downloads.jpg ;;
-	    esac
-	}
-	# todo using mimetype -b and more
-    }
+    print "$res"
 }
 
 index_dir() {
@@ -111,7 +100,7 @@ index_dir() {
 	LINK_PREFIX="file://$1"
 	act "LINK_PREFIX = $LINK_PREFIX"
     }
-
+    
     # human size dividers
     _mb=$((1024 * 1024))
     _gb=$((1024 * 1024 * 1024))
@@ -120,7 +109,7 @@ index_dir() {
 <table class="table table-hover table-condensed">
 <thead><tr>
 <th class="col-sm-1 col-md-1 col-lg-1"><!-- filetype icon --></th>
-<th class="col-sm-4 col-md-4 col-lg-4">Filename</th>
+<th class="col-sm-3 col-md-4 col-lg-4">Filename</th>
 <th class="col-sm-1 col-md-2 col-lg-3">Size</th>
 <th class="col-sm-1 col-md-2 col-lg-3">Date</th>
 <th class="col-sm-3 col-md-4 col-lg-5">Preview</th>
@@ -152,6 +141,8 @@ EOF
 	link=""
 	icon=""
 
+	nametruncate="${(l:20:: :)${name[1,20]}}"
+
 	preview=`preview_file "$file"`
 
 	{ test "$preview" = "" } || {
@@ -160,7 +151,7 @@ EOF
 		jpg|jpeg|png|gif|pdf|svg|eps)
 		    func "preview is a thumbnail"
 		    preview="<img src=\"$preview\" alt=\"$name\" title=\"$name\">"
-		    icon="image.jpg"
+		    icon="image-x-generic.png"
 		;;
 	    esac
 	}
@@ -170,23 +161,23 @@ EOF
 	if [ -L "$file" ]; then # is a symlink
 	    if [ -d "$file" ]; then # symlink to folder
 		link="<a href=\"${name}/index.html\">"
-		typefield="${link}<img src=\"${WEB_ROOT}/icons/symlink.jpg\" alt=\"symlink\" ${icon_width}></a>"
+		typefield="${link}<img src=\"${WEB_ROOT}/icons/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
 		namefield="${link}${name}</a>"
 		previewfield="<!-- folder -->"
 	    else                    # symlink to file
-		link="<a href=\"${LINK_PREFIX}/${link}\">"
-		typefield="${link}<img src=\"${WEB_ROOT}/icons/symlink.jpg\" alt=\"symlink\" ${icon_width}></a>"
+		link="<a href=\"${LINK_PREFIX}/${name}\">"
+		typefield="${link}<img src=\"${WEB_ROOT}/icons/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
 		namefield="${link}${name}</a>"
 		previewfield="${link}${preview}</a>"
 	    fi
 	elif [ -d "$file" ]; then   # is a folder
 	    link="<a href=\"${name}/index.html\">"
-	    typefield="${link}<img src=\"${WEB_ROOT}/icons/folder.jpg\" alt=\"folder\" ${icon_width}></a>"
+	    typefield="${link}<img src=\"${WEB_ROOT}/icons/folder.png\" alt=\"folder\" ${icon_width}></a>"
 	    namefield="${link}${name}</a>"
 	    previewfield="<!-- folder -->"
 	else                        # is a file
 	    { test "$icon" = "" } && { icon="`filetype_icon ${file}`" }
-	    link="<a href=\"${LINK_PREFIX}/${link}\">"
+	    link="<a href=\"${LINK_PREFIX}/${name}\">"
 	    typefield="${link}<img src=\"${WEB_ROOT}/icons/${icon}\" alt=\"${icon}\" ${icon_width}></a>"
 	    namefield="${link}${name}</a>"
 	    previewfield="${link}${preview}</a>"
@@ -196,12 +187,23 @@ EOF
 	cat <<EOF
 <tr>
 <td style="vertical-align:middle;">${typefield}</td>
-<td style="vertical-align:middle;font-size:2em">${namefield}</td>
+<td style="vertical-align:middle;font-size:1.5em;word-wrap:break-word">${namefield}</td>
 <td style="vertical-align:middle">$hsize</td>
 <td style="vertical-align:middle">$hdate</td>
 <td style="vertical-align:middle">${previewfield}</td>
 </tr>
 EOF
+
+	tpwd="`pwd`"
+	popd
+	# copy the icon file
+	{ test -r ${destination}/icons/${icon} } || {
+	    func "copy icon in place: $icon (PWD: `pwd`)"
+	    cp $SYS/icons/$THUMB_SIZE/${icon} \
+		${destination}/icons/${icon}
+	}
+	pushd "$tpwd"
+	
     done
     print "</table>"
 }

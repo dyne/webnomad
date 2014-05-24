@@ -200,7 +200,8 @@ index() {
 #    render_header "<link rel=\"stylesheet\" href=\"css/blueimp-gallery.min.css\" />"
     { test -d "$1" } || { error "cannot index directory not found: $1"; return 1 }
     source $SYS/index
-    dirs=`find "$1" -type d`
+
+    dirs=`find "$1" -type d | grep -v .git`
     basedir=`dirname "$1"`
 
     # setup paths for test
@@ -212,8 +213,16 @@ index() {
 	act "WEB_ROOT = $WEB_ROOT"
     }
 
+    # copy default icons
+    mkdir -p $destination/icons
+    cp $SYS/icons/$THUMB_SIZE/image-x-generic.png $destination/icons
+    cp $SYS/icons/$THUMB_SIZE/symlink.png $destination/icons
+    cp $SYS/icons/$THUMB_SIZE/folder.png $destination/icons
+
     for d in ${(f)dirs}; do
-	dir="${d##*${basedir}}"
+	dir="${d##*${basedir}}"	
+	# skip some subdirs
+
 	mkdir -p "${destination}/$dir"
 	render_header > "${destination}/$dir/index.html"
 	cat tmpl/navbar.html >> "${destination}/$dir/index.html"
@@ -228,7 +237,7 @@ EOF
 	{ test -r "${d}/README.md" } && {
 	    cat <<EOF >> index.html
   </div>
-  <div class="span3">
+  <div class="span6">
 EOF
 	    maruku --html --html-frag -o - "${d}/README.md" >> index.html
 	}
