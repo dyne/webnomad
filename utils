@@ -20,10 +20,6 @@
 
 # initialize paths
 
-VERSION=0.3
-
-QUIET=0
-
 autoload colors; colors
 
 # standard output message routines

@@ -18,59 +18,23 @@
 # this source code; if not, write to:
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-
-VERSION=0.1
-
-QUIET=0
-RECURSIVE=0
-PARAM=()
-
-autoload colors; colors
-
-# standard output message routines
-# it's always useful to wrap them, in case we change behaviour later
-notice() { if [[ $QUIET == 0 ]]; then print "$fg_bold[green][*]$fg_no_bold[default] $1" >&2; fi }
-error()  { if [[ $QUIET == 0 ]]; then print "$fg[red][!]$fg[default] $1" >&2; fi }
-func()   { if [[ $DEBUG == 1 ]]; then print "$fg[blue][D]$fg[default] $1" >&2; fi }
-act()    {
-    if [[ $QUIET == 0 ]]; then
-	if [ "$1" = "-n" ]; then
-	    print -n "$fg_bold[white] . $fg_no_bold[default] $2" >&2;
-	else
-	    print "$fg_bold[white] . $fg_no_bold[default] $1" >&2;
-	fi
-    fi
-}
-
-# quick bold
-B="$fg_bold[white]"
-r="$reset_color"
-
-# honor quiet and debug flags as early as possible
-if [[ ${@} == *-q* ]]; then QUIET=1; fi
-if [[ ${@} == *-D* ]]; then DEBUG=1; fi
-
-# what operating system are we in? use os_detect()
-# simplifying modes of operation: GNU or MAC
-case $(uname) in
-    Linux) OS=GNU
-	notice "ZShelf v$VERSION running on GNU/Linux"	;;
-
-    Darwin) OS=MAC
-	notice "ZShelf v$VERSION running on Mac/OSX"	;;
-
-    *) OS=GNU # default
-	error "Running on an unknown operating system, assuming GNU" ;;
-esac
-
-if [[ ${@} == *-r* ]]; then RECURSIVE=1; fi
+# API in brief:
+#
+# filetype_icon() - takes a filename as arg (can be file only or real path)
+#                 - returns a filename for the icon to be used from icons/
+#
+# index_dir() - indexes a directory into an html file linking all its contents
+#
+# preview_file() - takes a filename as arg
+#                  renders the file in a usable format (thumb if image, html if markdown, etc.)
+#                  returns the filename of the rendered result
+#
 
 # file list map for current dir
 # format: filename;size;date
 typeset -alU files
 
-# TODO
-usage() { act "no help ATM sry" }
+
 filetype_icon() {
 
     { test "$1" = "" } && { error "filetype_icon called without argument"; return 1 }
@@ -294,142 +258,4 @@ preview_file() {
     done
     return 0
 }
-autostart() {
-    if [ -d "$1" ]; then
-	index_dir "$1"
-    elif [ -f "$1" ]; then
-	preview_file "$1"
-    else
-	return 1
-    fi
-    return $?
-}
 
-typeset -A subcommands_opts
-
-### Options configuration
-#Hi, dear developer! Are you trying to add a new subcommand, or to add some options?
-#Well, keep in mind that:
-# 1. An option CAN'T have differente meanings/behaviour in different subcommands.
-#    For example, "-s" means "size" and accept an argument. If you are tempted to add
-#    an option "-s" (that means, for example "silent", and doesn't accept an argument)
-#              DON'T DO IT!
-#     There are two reasons for that:
-#       I. usability; user expect that "-s" is "size
-#       II. Option parsing WILL EXPLODE if you do this kind of bad things
-#               (it will say "option defined more than once, and he's right)
-
-
-
-# recursive, quiet, Debug, help, verbose, n=dryrun
-main_opts=(r q D h v n)
-
-# p: prefix (string arg) = <a href> link prefix
-subcommands_opts[index]="p: "
-subcommands_opts[preview]=""
-
-option_is_set() {
-    #First argument, the option (something like "-s")
-    #Second (optional) argument: if it's "out", command will print it out 'set'/'unset'
-    #                       This is useful for if conditions
-    #Return 0 if is set, 1 otherwise
-    [[ -n ${(k)opts[$1]} ]];
-    r=$?
-    if [[ $2 == out ]]; then
-	if [[ $r == 0 ]]; then print 'set'
-	else print 'unset'; fi
-    fi
-    return $r;
-}
-option_value() { #First argument, the option (something like "-s")
-    <<< ${opts[$1]}
-}
-
-### Detect subcommand
-local -aU every_opts #every_opts behave like a set; that is, an array with unique elements
-for optspec in $subcommands_opts$main_opts; do
-    for opt in ${=optspec}; do
-	every_opts+=${opt}
-    done
-done
-local -a oldstar
-oldstar=($argv)
-zparseopts -M -E -D -Adiscardme ${every_opts}
-unset discardme
-subcommand=$1
-{ test "$subcommand" = "" } && { subcommand="__default" }
-
-argv=(${oldstar})
-unset oldstar
-
-### Parsing global + command-specific options
-# zsh magic: ${=string} will split to multiple arguments when spaces occur
-set -A cmd_opts ${main_opts} ${=subcommands_opts[$subcommand]}
-if [[ -n $cmd_opts ]]; then #if there is no option, we don't need parsing
-    zparseopts -M -E -D -Aopts ${cmd_opts}
-    if [[ $? != 0 ]]; then
-	error "Some error occurred during option processing."
-	exitcode=1
-	return 1
-    fi
-fi
-#build PARAM (array of arguments) and check if there are unrecognized options
-local ok=0
-for arg in $*; do
-    if [[ $arg == '--' || $arg == '-' ]]; then
-	ok=1
-	continue #it shouldnt be appended to PARAM
-    elif [[ $arg[1] == '-'  ]]; then
-	if [[ $ok == 0 ]]; then
-	    error "unrecognized option $arg"
-	    exitcode=1
-	    return 1
-	fi
-    fi
-    PARAM+=$arg
-done
-
-# if 1st parameter is a known subcommand omit it from params
-{ test "$subcommand" = "__default" } || { PARAM[1]=(); shift }
-
-### End parsing command-specific options
-
-{ option_is_set -v } && {
-    cat $ZSHELFEXEC | awk '/^#/ {print $0 } !/^#/ {exit}'
-    echo }
-{ option_is_set -h } && { usage; return 0 }
-{ option_is_set -v } && { CLEANEXIT=0
-    cat $JAROMAILEXEC | awk 'BEGIN { v=1 } !/^#/ { exit }'
-    return 0 }
-{ option_is_set -q } && { QUIET=1 }
-{ option_is_set -D } && { DEBUG=1; QUIET=0; func "All debug messages ON" }
-{ option_is_set -n } && { DRYRUN=1; act "Dry run, show operations without executing them." }
-{ option_is_set -r } && { RECURSIVE=1 }
-{ option_is_set -p } && { LINK_PREFIX="`option_value -p`" }
-
-# we take a file or directory as the only one parameter
-ARG=${PARAM[1]}
-case "$subcommand" in
-    index)
-	index_dir "$ARG"
-	{ test -r "${ARG}/README.md" } && {
-	    res=`preview_file "${ARG}/README.md"`
-	    print "<hr>"
-	    cat "$res"
-	}
-	;;
-    preview) preview_file ${PARAM} ;;
-    help) usage ;;
-    'source') return 0 ;;
-    *) # unknown command, pass it to autostart
-	func "unknown command, using autostart"
-	autostart ${=PARAM}
-	exitcode=$?
-	{ test $exitcode = 0 } || {
-	    error "command \"$subcommand\" not recognized"
-	    act "try -h for help"
-	}
-	;;
-esac
-exitcode=$?
-return $exitcode

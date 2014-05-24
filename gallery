@@ -1,0 +1,139 @@
+#!/usr/bin/env zsh
+#
+# WebNomad, your slick and static website publisher
+#
+# Copyright (C) 2012-2014 Denis Roio <jaromil@dyne.org>
+#
+# This source  code is free  software; you can redistribute  it and/or
+# modify it under the terms of  the GNU Public License as published by
+# the Free  Software Foundation; either  version 3 of the  License, or
+# (at your option) any later version.
+#
+# This source code is distributed in  the hope that it will be useful,
+# but  WITHOUT ANY  WARRANTY;  without even  the  implied warranty  of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+
+includejs+=(jquery.min.js)
+includejs+=(blueimp-gallery.min.js)
+
+includecss+=(blueimp-gallery.min.css)
+
+render_gallery() {
+
+    render_header
+
+    # close <head> with gallery specific styles
+    cat <<EOF
+]
+</head> <!-- end of <head> -->
+
+<body>
+  <div class="container">
+EOF
+
+    # don't forget the navbar
+    cat tmpl/navbar.html
+
+    cat <<EOF
+<!-- The Gallery as lightbox dialog, should be a child element of the document body -->
+<div id="blueimp-gallery" class="blueimp-gallery">
+    <div class="slides"></div>
+    <h3 class="title"></h3>
+    <a class="prev">‹</a>
+    <a class="next">›</a>
+    <a class="close">×</a>
+    <a class="play-pause"></a>
+    <ol class="indicator"></ol>
+</div>
+
+EOF
+
+    # put a notice for non-javascript browsers
+    cat <<EOF
+<noscript>
+<p>&nbsp;</p>
+<div class="alert">
+  <button type="button" class="close" data-dismiss="alert">&times;</button>
+  <strong>Javascript missing</strong>.
+You either have JavaScript turned off or your browser doesn't support JavaScript.
+This website mostly consists of image galleries and needs JavaScript.
+</div>
+</noscript>
+EOF
+
+    # if a file was specified as argument, include it
+    { test -r "$1" } && { cat "$1" | render_html }
+
+# generate the gallery's javascript
+    dst_js="temp-${RANDOM}-gallery.js"
+
+    cat <<EOF > ${destination}/js/${dst_js}
+var slides= [];
+EOF
+
+    # parse gallery entries
+    pics=`grep -v '^#'`
+    for p in ${(f)pics}; do
+	file=${p[(ws: :)1]}
+	desc=`print $p | awk '{ for(c=2;c<=NF;c++) printf("%s ",$c) }'`
+	cat << EOF >> ${destination}/js/$dst_js
+slides.push({
+	href: '${file}',
+	title: '${desc}'
+});
+EOF
+    done
+
+    cat <<EOF >> ${destination}/js/$dst_js
+
+function shuffle(array) {
+  var m = array.length, t, i;
+
+  // While there remain elements to shuffle…
+  while (m) {
+
+    // Pick a remaining element…
+    i = Math.floor(Math.random() * m--);
+
+    // And swap it with the current element.
+    t = array[m];
+    array[m] = array[i];
+    array[i] = t;
+  }
+
+  return array;
+}
+
+slides = shuffle(slides);
+
+blueimp.Gallery(slides, {
+	container: '#blueimp-gallery',
+	carousel: true,
+	fullscreen: true,
+	closeOnEscape: true,
+	closeOnSwipeUpOrDown: true,
+	startSlideshow: true,
+	slideshowInterval: 4500,
+});
+EOF
+# closeOnSlideClick: true,
+
+
+
+# not really needed
+	# includejs+=(js/blueimp-helper.js)
+	# includejs+=(js/blueimp-gallery-indicator.js)
+	# includejs+=(js/blueimp-gallery-fullscreen.js)
+	# includejs+=(js/jquery.blueimp-gallery.min.js)
+
+	includejs+=($dst_js)
+
+	render_footer
+
+}

@@ -1,129 +1,13 @@
 #!/usr/bin/env zsh
 
-DIR=`dirname $0`
-CMD=`basename $0`
-{ test -r $DIR } || {
-    echo "error: launch webnomad commands from your project directory"
-    echo "i.e: ./$DIR/$CMD"
-    return 1
-}
-
-source ${DIR}/utils
-
-{ test -r config.zsh } || {
-    error "Directory not configured for WebNomad. First use ./webnomad/init"
-    exit 1 }
-
-source config.zsh
-
-notice "Rendering $BRAND website"
-act "Title: $TITLE"
-
-
-source ${DIR}/render source
-
 # make it work to browse results on file://
 baseurl="file://`pwd`/test/"
 
 destination="test"
 
-# Main
+includejs+=(jquery.min.js jquery.sidr.js)
 
-mkdir -p ${destination}/css
-# side menu stylesheet
-cp $DIR/css/jquery.sidr.dark.css ${destination}/css
-
-fonts=('Arial' 'Arial Black' 'Comic Sans MS' 'Courier New' 'Georgia' 'Impact' 'Monaco' 'Lucida Grande')
-fonts+=('Book Antiqua' 'Tahoma' 'Times New Roman' 'Trebuchet MS' 'Verdana' 'Geneva' 'New York')
-custom_fonts=()
-total_fonts=${#fonts}
-# string match case insensitive
-unsetopt CASE_GLOB
-
-# if there are custom fonts add them
-{ test -d fonts } && {
-    notice "Indexing custom fonts"
-    rm -f ${destination}/css/custom.fonts.css
-    mkdir -p ${destination}/fonts
-    ttf=`find -L fonts -iname '*.ttf'`
-    for f in ${(f)ttf}; do
-	ffile=`basename "$f"`
-	cp "$f" ${destination}/css/"$ffile"
-	custom_fonts+=("${ffile%.ttf}")
-	cat <<EOF >> ${destination}/css/custom.fonts.css
-	@font-face { font-family: '${ffile%.ttf}';
-             src: url('$ffile') format('truetype'); }
-EOF
-	total_fonts=$(( $total_fonts + 1 ))
-    done
-    otf=`find -L fonts -iname '*.otf'`
-    for f in ${(f)otf}; do
-	ffile=`basename "$f"`
-	cp "$f" ${destination}/css/"$ffile"
-	custom_fonts+=("${ffile%.otf}")
-	cat <<EOF >> ${destination}/css/custom.fonts.css
-	@font-face { font-family: '${ffile%.otf}';
-             src: url('$ffile') format('opentype'); }
-EOF
-	total_fonts=$(( $total_fonts + 1 ))
-    done
-
-
-    act "$total_fonts custom fonts indexed"
-}
-
-fonts=($custom_fonts $fonts)
-
-# render all HTML views
-htmls=(`find views -type f -name '*.html'`)
-for src in $htmls; do
-    # read meta commands
-    cat ${src} | read_meta
-
-    # compute destination file
-    dst="${destination}/`basename ${src%.*}`$EXTENSION"
-    
-    render_header > $dst
-
-    # close <head> as nothing else is needed
-    cat <<EOF >> $dst
-
-<link rel="stylesheet" href="css/jquery.sidr.dark.css">
-<link rel="stylesheet" href="css/custom.fonts.css">
-
-</head> <!-- end of <head> -->
-
-<body>
-  <div class="container">
-EOF
-
-    # navbar
-    cat tmpl/navbar.html >> $dst
-
-    # start the body of article
-    cat <<EOF >> $dst
-<p>&nbsp;</p>
-<a id="menu" href="#sidr">Design test</a>
-
-<article>
-EOF
-
-    # render html
-    act -n "Html rendering: $dst "
-    cat $src | render_html >> $dst
-
-cat <<EOF >> $dst
-</article>
-<p>&nbsp;</p>
-
-<script type="text/javascript" src="js/jquery.min.js"></script>
-<script type="text/javascript" src="js/jquery.sidr.js"></script>
-
- 
-<div id="sidr">
-  <h3>Design test</h3>
-EOF
-
+includecss+=(jquery.sidr.dark.css)
 
 # Font size selector
 
@@ -142,15 +26,8 @@ EOF
 </select>
 EOF
 }
-
-print  "<h4>H1 font size</h3>" >> $dst
-font-size_select h1size >> $dst
-
-print  "<h4>H2 font size</h3>" >> $dst
-font-size_select h2size >> $dst
-
-
-
+    
+    
 # font family selector
 
 font-family_select() {
@@ -164,30 +41,42 @@ EOF
     done
     print "</select>"
 }
-	
 
-cat <<EOF >> $dst
+
+render_test_footer() {
+    cat <<EOF
+<div id="sidr">
+  <h3>Design test</h3>
+EOF
+
+    print  "<h4>H1 font size</h3>"
+    font-size_select h1size
+    
+    print  "<h4>H2 font size</h3>"
+    font-size_select h2size
+
+    cat <<EOF
   <h3>Brand font family</h3>
 EOF
-font-family_select brand-font-family >> $dst
-
-cat <<EOF >> $dst
+    font-family_select brand-font-family
+    
+cat <<EOF
   <h3>Header font family</h3>
 EOF
-font-family_select header-font-family >> $dst
+font-family_select header-font-family
 
-cat <<EOF >> $dst
+cat <<EOF
   <h3>Body font family</h3>
 EOF
-font-family_select body-font-family >> $dst
+font-family_select body-font-family
 
-cat <<EOF >> $dst
+cat <<EOF
   <h3>Navigation Font family</h3>
 EOF
-font-family_select nav-font-family >> $dst
+font-family_select nav-font-family
 
 
-cat <<EOF  >> $dst
+cat <<EOF
 
 </div>
 
@@ -215,33 +104,4 @@ cat <<EOF  >> $dst
 
 EOF
 
-    render_footer >> $dst
-
-    act "done"
-
-done
-
-
-for m in `find views -mindepth 1 -type d `; do
-    act -n "publishing $m... "
-    rsync -r $m ${destination}/
-    print "done"
-done
-
-# add design test libs
-mkdir -p ${destination}/js
-cp $DIR/js/jquery.min.js ${destination}/js
-cp $DIR/js/jquery.sidr.js ${destination}/js
-
-
-
-#### directory index
-idxs=(`find views -type f -name '*.idx'`)
-idxs+=(`find views -type f -name '*.index'`)
-{ test ${#idxs} = 0 } || {
-    for idx in $idxs; do
-	notice "Directory index rendering: $idx"
-	source ${idx}
-    done
-    rsync -rlt "$DIR/icons" "${destination}/"
 }

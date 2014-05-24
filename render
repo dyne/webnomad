@@ -2,7 +2,7 @@
 #
 # WebNomad, your slick and static website publisher
 #
-# Copyright (C) 2012-2013 Denis Roio <jaromil@dyne.org>
+# Copyright (C) 2012-2014 Denis Roio <jaromil@dyne.org>
 #
 # This source  code is free  software; you can redistribute  it and/or
 # modify it under the terms of  the GNU Public License as published by
@@ -18,10 +18,14 @@
 # this source code; if not, write to:
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
+VERSION=0.5
+
+QUIET=0
+
 SYS=`dirname $0`
 source $SYS/utils
 
-
+CMD="$1"
 
 { test -r config.zsh } || {
     error "Directory not configured for WebNomad. First use /webnomad/init"
@@ -30,10 +34,6 @@ source $SYS/utils
 
 ####################################
 # Base configuration
-notice "Rendering $B $BRAND $r website"
-act "Title: $B $TITLE $r"
-
-typeset -a includejs
 
 # base to be added to all urls
 # used by test to have all css and js in place
@@ -47,6 +47,7 @@ destination="pub"
 WEB_ROOT=""
 
 # prefix to all indexed files
+# this can be a full path on the filesystem
 INDEX_PREFIX=""
 
 # thumbnail size
@@ -54,6 +55,17 @@ THUMB_SIZE=256
 
 source config.zsh
 ####################################
+
+typeset -h dst # full path to destination for render_ functions
+typeset -alU includecss # array of css files to include
+typeset -alU includejs # array of js files to include
+typeset -alU fonts # array of available fonts
+
+# string match case insensitive
+unsetopt CASE_GLOB
+
+notice "Rendering your website"
+act "Title: $B $TITLE $r"
 
 
 render_header() {
@@ -82,14 +94,29 @@ render_header() {
 
 EOF
     { test -r views/css/custom.css } && {
-cat <<EOF
+	cat <<EOF
     <link href="${baseurl}css/custom.css" rel="stylesheet" />
-
 EOF
-}
+    }
 
-    { test "$1" = "" } || { echo "${@}"; echo }
+    # add css needed for internal functions
+    for c in $includecss; do
+	cat <<EOF
+    <link href="${baseurl}css/${c}" rel="stylesheet" />
+EOF
+	cp $SYS/css/${c} ${destination}/css/
+    done
 
+    { test -f ${destination}/css/custom.fonts.css } && {
+	cat <<EOF
+    <link href="${baseurl}css/custom.fonts.css" rel="stylesheet" />
+EOF
+    }
+
+    # add any argument string to header
+    { test "$1" = "" } || { print "${@}"; print }
+
+    # add the user configured header
     cat tmpl/header.html
 
 }
@@ -101,11 +128,21 @@ render_footer() {
 </div><!--/.container-->
 EOF
 
-    { test "$1" = "" } || { echo "${@}"; echo }
+    # add any string argument to the footer
+    { test "$1" = "" } || { print "${@}"; print }
 
+    # insert and copy all js files
     for i in $includejs; do
-	echo "<script src=\"${baseurl}$i\"></script>"
+	cat <<EOF
+<script type="text/javascript" src="${baseurl}/js/$i"></script>
+EOF
+	{ test -r $SYS/js/$i } && {
+	    cp $SYS/js/$i $destination/js }
     done
+
+    # if test mode then render the test footer
+    { test "$destination" = "test" } && {
+	render_test_footer }
 
 cat <<EOF
   </body>
@@ -114,7 +151,6 @@ EOF
 }
 
 render_html() {
-
 
 #######################################
 ## we support the <markdown> tag inline
@@ -160,128 +196,10 @@ render_html() {
 
 }
 
-render_gallery() {
-
-    render_header
-
-    # close <head> with gallery specific styles
-    cat <<EOF >> $dst
-    <link rel="stylesheet" href="${baseurl}css/blueimp-gallery.min.css" />
-
-</head> <!-- end of <head> -->
-
-<body>
-  <div class="container">
-EOF
-
-    # don't forget the navbar
-    cat tmpl/navbar.html
-
-    cat <<EOF
-<!-- The Gallery as lightbox dialog, should be a child element of the document body -->
-<div id="blueimp-gallery" class="blueimp-gallery">
-    <div class="slides"></div>
-    <h3 class="title"></h3>
-    <a class="prev">‹</a>
-    <a class="next">›</a>
-    <a class="close">×</a>
-    <a class="play-pause"></a>
-    <ol class="indicator"></ol>
-</div>
-
-EOF
-
-    # put a notice for non-javascript browsers
-    cat <<EOF
-<noscript>
-<p>&nbsp;</p>
-<div class="alert">
-  <button type="button" class="close" data-dismiss="alert">&times;</button>
-  <strong>Javascript missing</strong>.
-You either have JavaScript turned off or your browser doesn't support JavaScript.
-This website mostly consists of image galleries and needs JavaScript.
-</div>
-</noscript>
-EOF
-
-    # if a file was specified as argument, include it
-    { test -r "$1" } && { cat "$1" | render_html }
-
-# generate the gallery's javascript
-    dst_js="js/temp-${RANDOM}-gallery.js"
-
-    cat <<EOF > ${destination}/${dst_js}
-var slides= [];
-EOF
-
-    # parse gallery entries
-    pics=`grep -v '^#'`
-    for p in ${(f)pics}; do
-	file=${p[(ws: :)1]}
-	desc=`pecho $p | awk '{ for(c=2;c<=NF;c++) printf("%s ",$c) }'`
-	cat << EOF >> ${destination}/$dst_js
-slides.push({
-	href: '${file}',
-	title: '${desc}'
-});
-EOF
-    done
-
-    cat <<EOF >> ${destination}/$dst_js
-
-function shuffle(array) {
-  var m = array.length, t, i;
-
-  // While there remain elements to shuffle…
-  while (m) {
-
-    // Pick a remaining element…
-    i = Math.floor(Math.random() * m--);
-
-    // And swap it with the current element.
-    t = array[m];
-    array[m] = array[i];
-    array[i] = t;
-  }
-
-  return array;
-}
-
-slides = shuffle(slides);
-
-blueimp.Gallery(slides, {
-	container: '#blueimp-gallery',
-	carousel: true,
-	fullscreen: true,
-	closeOnEscape: true,
-	closeOnSwipeUpOrDown: true,
-	startSlideshow: true,
-	slideshowInterval: 4500,
-});
-EOF
-# closeOnSlideClick: true,
-
-	includejs=(js/jquery.min.js)
-	includejs+=(js/bootstrap.min.js)
-	includejs+=(js/blueimp-gallery.min.js)
-
-
-# not really needed
-	# includejs+=(js/blueimp-helper.js)
-	# includejs+=(js/blueimp-gallery-indicator.js)
-	# includejs+=(js/blueimp-gallery-fullscreen.js)
-	# includejs+=(js/jquery.blueimp-gallery.min.js)
-
-	includejs+=($dst_js)
-
-	render_footer
-
-}
-
 index() {
 #    render_header "<link rel=\"stylesheet\" href=\"css/blueimp-gallery.min.css\" />"
     { test -d "$1" } || { error "cannot index directory not found: $1"; return 1 }
-    source $SYS/index source
+    source $SYS/index
     dirs=`find "$1" -type d`
     basedir=`dirname "$1"`
 
@@ -336,18 +254,24 @@ read_meta() {
 
 
 { test "$1" = "source" } && { return 0 }
+{ test "$1" = "test" } && { 
+    act "Local test rendering inside test/"
+    source $SYS/test }
 
+# prepare all fonts
+source $SYS/fonts
 
 # Main
+mkdir -p ${destination}/css
+mkdir -p ${destination}/js
 
-mkdir -p pub
 cat << EOF > ${destination}/.htaccess
 DirectoryIndex index index.html index.php
 DefaultType text/html
 EOF
 
 act -n "Clean up all temp files ... "
-temps=(`find pub -type f -name 'temp-*'`)
+temps=(`find "$destination" -type f -name 'temp-*'`)
 for t in $temps; do rm -f $t; done
 print "done"
 
@@ -400,7 +324,7 @@ cat <<EOF >> $dst
 
 EOF
 
-    includejs=(js/bootstrap.min.js)
+#    includejs=(js/bootstrap.min.js)
     render_footer >> $dst
 
     act "done"
@@ -408,6 +332,7 @@ EOF
 done
 
 # render all image galleries
+source $SYS/gallery
 gals=(`find views -type f -name '*.gal'`)
 gals+=(`find views -type f -name '*.gallery'`)
 for src in $gals; do
@@ -422,19 +347,23 @@ done
 # render all directory indexes
 idxs=(`find views -type f -name '*.idx'`)
 idxs+=(`find views -type f -name '*.index'`)
-for idx in $idxs; do
-    notice "Directory index rendering: $idx"
-    source ${idx}
-done
+{ test ${#idxs} = 0 } || {
+    for idx in $idxs; do
+	notice "Directory index rendering: $idx"
+	source ${idx}
+    done
+    # copy icons only if needed
+    rsync -rlt "$SYS/icons" "${destination}/"
+}
 
-
+# copy to destination all subdirs in views/
 for m in `find views -mindepth 1 -type d `; do
     act -n "publishing $B $m $r ... "
     rsync -r $m ${destination}/
     print "done"
 done
 
-# if the whole website is a "slideshow" typology then we start with
+# if the whole website is a "slideshow" (set in config.zsh) then we start with
 # a full screen slideshow of all uploaded photos, cycling random every time.
 # galleries are supported and can be linked in menu and pages.
 { test "$WEBSITE" = "slideshow" } && {

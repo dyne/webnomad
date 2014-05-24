@@ -68,10 +68,24 @@ mkdir -p tmpl
 { test -r config.zsh } || {
     cat <<EOF > config.zsh
 TITLE="A new website made with WebNomad."
-BRAND="WebNomad"
 DESCRIPTION="WebNomad, your slick and static website publisher, powered by HTML5, Zsh and Bootstrap"
 KEYWORDS="web, design, html"
+
+#
+# Anything below is safe to leave untouched
+#
+
+# what file extension to use for html files
 EXTENSION=".html"
+
+# what is the root of this website url, after the domain
+# leave blank if relative, or for instance /blog/
+WEB_ROOT=""
+
+# where on the server filesystem are the indexed files located
+# this directory should be aliased by apache
+INDEX_PREFIX=""
+
 EOF
 }
 
