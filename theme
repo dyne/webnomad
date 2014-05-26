@@ -28,6 +28,8 @@ CMD="`basename $0`"
     return 1
 }
 
+QUIET=0
+DEBUG=0
 
 source ${DIR}/utils
 
