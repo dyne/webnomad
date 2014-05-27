@@ -22,8 +22,12 @@ VERSION=0.5
 
 QUIET=0
 
-SYS=`dirname $0`
+# full path to webnomad's system
+SYS="`pwd`/webnomad"
 source $SYS/utils
+
+# fill path to the source website root
+DIR="`pwd`"
 
 CMD="$1"
 
@@ -67,6 +71,18 @@ unsetopt CASE_GLOB
 notice "Rendering your website"
 act "Title: $B $TITLE $r"
 
+# setup paths for test
+{ test "$CMD" = "test" } && {
+    LINK_PREFIX="file://`pwd`"
+    WEB_ROOT="file://`PWD=${SYS} pwd`/test"
+    baseurl="$WEB_ROOT"
+    destination="$DIR/test"
+    notice "Test settings for indexing"
+    act "SYS = $SYS"
+    act "WEB_ROOT = $WEB_ROOT"
+}
+
+render_file() { sed -e "s@\${baseurl}@${baseurl}@g" $@ }
 
 render_header() {
     cat <<EOF
@@ -90,10 +106,9 @@ render_header() {
 <!-- Bootstrap -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link href="${baseurl}css/bootstrap.min.css" rel="stylesheet" />
-    <link href="${baseurl}css/bootstrap-responsive.min.css" rel="stylesheet" />
 
 EOF
-    { test -r views/css/custom.css } && {
+    { test -r "$DIR"/views/css/custom.css } && {
 	cat <<EOF
     <link href="${baseurl}css/custom.css" rel="stylesheet" />
 EOF
@@ -104,10 +119,10 @@ EOF
 	cat <<EOF
     <link href="${baseurl}css/${c}" rel="stylesheet" />
 EOF
-	cp $SYS/css/${c} ${destination}/css/
+	cp "$SYS"/css/${c} "${destination}"/css/
     done
 
-    { test -f ${destination}/css/custom.fonts.css } && {
+    { test -f "${destination}"/css/custom.fonts.css } && {
 	cat <<EOF
     <link href="${baseurl}css/custom.fonts.css" rel="stylesheet" />
 EOF
@@ -117,12 +132,12 @@ EOF
     { test "$1" = "" } || { print "${@}"; print }
 
     # add the user configured header
-    cat tmpl/header.html
+    render_file "$DIR"/tmpl/header.html
 
 }
 
 render_footer() {
-    cat tmpl/footer.html
+    render_file "$DIR"/tmpl/footer.html
 
     cat <<EOF
 </div><!--/.container-->
@@ -136,8 +151,8 @@ EOF
 	cat <<EOF
 <script type="text/javascript" src="${baseurl}/js/$i"></script>
 EOF
-	{ test -r $SYS/js/$i } && {
-	    cp $SYS/js/$i $destination/js }
+	{ test -r "$SYS"/js/$i } && {
+	    cp "$SYS"/js/$i "$destination"/js }
     done
 
     # if test mode then render the test footer
@@ -152,40 +167,45 @@ EOF
 
 render_html() {
 
-#######################################
-## we support the <markdown> tag inline
+    #######################################
+    ## we support the <markdown> tag inline
 
+    # parses the html and put all stuff contained in <markdown /> tags
+    # inside separate files, leaving a trace of them into the main html
+    # (a line starting with tmp.md$RAND)
     tmp="tmp.$RANDOM"
     awk 'BEGIN { srand(); markdown=0; }
 /^<markdown>/ { markdown=1; out="tmp.md" rand(); print out; next }
 /^<\/markdown>/ { markdown=0; next }
 { if(markdown==1) { print $0 >out; next } else { print $0 } }
 ' > $tmp
-
-# first pass marks the markdown parts and saves them separate
-
+    
+    # first pass marks the markdown parts and saves them separate    
     mds=(`find . -name 'tmp.md*'`)
     { test "${#mds}" = "0" } || {
-# second pass substituted saved parts with rendered markdown
+	# second pass substituted saved parts with rendered markdown
 	act -n "${#mds} markdown fields "
 	
+	# check which markdown parser is available in PATH
+	command -v maruku > /dev/null
+	if [ "$?" = "0" ]; then parser="maruku --html-frag"
+	else command -v markdown > /dev/null;
+	    if [ "$?" = "0" ]; then parser=markdown
+	    else command -v multimarkdown > /dev/null
+		if [ "$?" = "0"]; then parser=multimarkdown
+		fi
+	    fi
+	fi
 
-
-    # check which markdown parser is available in PATH
-    command -v markdown > /dev/null
-    if [ "$?" = "0" ]; then parser=markdown
-    else command -v multimarkdown > /dev/null
-    if [ "$?" = "0"]; then parser=multimarkdown; fi
-    fi
-
-    for i in $mds; do
-       md=`basename $i`
-       newtemp="tmp.$RANDOM"
-       cat $tmp | awk '
+	# parses all html and renders each markdown in the html
+	for i in $mds; do
+	    md=`basename $i`
+	    newtemp="tmp.$RANDOM"
+	    cat $tmp | awk '
 /^'"$md"'/ { system("cat '"$md"' | '"$parser"'"); next }
 { print $0; }' > $newtemp
-       rm $tmp; tmp=$newtemp
-    done
+	    rm $tmp; tmp=$newtemp
+	done
     }
 
     cat $tmp
@@ -196,23 +216,22 @@ render_html() {
 
 }
 
-index() {
+# should be called from inside the destination directory
+recursive_index() {
 #    render_header "<link rel=\"stylesheet\" href=\"css/blueimp-gallery.min.css\" />"
     { test -d "$1" } || { error "cannot index directory not found: $1"; return 1 }
-    source $SYS/index
+    
+    archive="$1"
+    dirs=`find "$archive" -type d`
+    basedir="/`basename "$archive"`/"
 
-    dirs=`find "$1" -type d | grep -v .git`
-    basedir=`dirname "$1"`
+    diralias="$2"
 
-    # setup paths for test
-    { test "$destination" = "test" } && {
-	LINK_PREFIX="file://$1"
-	WEB_ROOT="file://`PWD=${SYS} pwd`/test"
-	notice "Test settings for indexing"
-	act "SYS = $SYS"
-	act "WEB_ROOT = $WEB_ROOT"
-    }
+    dest="`pwd`"
 
+    func "index archive $archive"
+    func "index basedir: $basedir"
+    func "index aliasdir: $diralias"
     # copy default icons
     mkdir -p $destination/icons
     cp $SYS/icons/$THUMB_SIZE/image-x-generic.png $destination/icons
@@ -220,34 +239,38 @@ index() {
     cp $SYS/icons/$THUMB_SIZE/folder.png $destination/icons
 
     for d in ${(f)dirs}; do
-	dir="${d##*${basedir}}"	
-	# skip some subdirs
+	dir="${d##*${basedir}}"
+	func "actual file path: $d"
+	func "relative path: $dir"
+	func "destination: ${dest}/${dir}"
 
-	mkdir -p "${destination}/$dir"
-	render_header > "${destination}/$dir/index.html"
-	cat tmpl/navbar.html >> "${destination}/$dir/index.html"
-	pushd "${destination}/$dir"
-	cat <<EOF >> index.html
-<div class="container-fluid">
-  <div class="span6">
+	mkdir -p "${dest}/${dir}"
+	pushd    "${dest}/${dir}"
+
+	render_header > index${EXTENSION}
+	render_file "$DIR"/tmpl/navbar.html >> index${EXTENSION}
+	cat <<EOF >> index${EXTENSION}
+<div class="container">
+<article>
 EOF
-	
-	index_dir "$d" >> index.html
-	# if there is a README put it besides
-	{ test -r "${d}/README.md" } && {
-	    cat <<EOF >> index.html
-  </div>
-  <div class="span6">
-EOF
-	    maruku --html --html-frag -o - "${d}/README.md" >> index.html
-	}
-	cat <<EOF  >> index.html
-  </div>
+
+	# takes 3 arguments: base dir, alias dir and indexed directory
+	# we must check if its the parent directory
+	index_long_preview "${archive}" "${diralias}" "${dir}" >> index${EXTENSION}
+	# if [ "$dir" = "" ]; then
+	#     index_dir "${d}" "${diralias}" "" >> index${EXTENSION}	    
+	# else
+	#     index_dir "${d%%${dir}*}" "${diralias}" "${dir}" >> index${EXTENSION}
+	# fi
+	cat <<EOF  >> index${EXTENSION}
+</article>
 </div>
 <p>&nbsp;</p>
 EOF
+
+	render_footer >> index${EXTENSION}
+
 	popd
-	render_footer >> "${destination}/$dir/index.html"
     done
 }
 
@@ -315,7 +338,7 @@ for src in $htmls; do
 EOF
 
     # don't forget the navbar
-    cat tmpl/navbar.html >> $dst
+    render_file "$DIR"/tmpl/navbar.html >> $dst
 
     cat <<EOF >> $dst
 <p>&nbsp;</p>
@@ -357,9 +380,17 @@ done
 idxs=(`find views -type f -name '*.idx'`)
 idxs+=(`find views -type f -name '*.index'`)
 { test ${#idxs} = 0 } || {
+    source "$SYS/index"
     for idx in $idxs; do
-	notice "Directory index rendering: $idx"
-	source ${idx}
+	dst=`basename ${idx%%.*}`
+	notice "Directory index rendering to: $dst"
+	dirs=`cat ${idx}`
+	for d in ${(f)dirs}; do
+	    mkdir -p "${destination}/${dst}"
+	    pushd "${destination}/${dst}"
+	    recursive_index "${d[(ws: :)1]}" "${d[(ws: :)2]}"
+	    popd
+	done
     done
     # copy icons only if needed
     rsync -rlt "$SYS/icons" "${destination}/"
@@ -386,4 +417,3 @@ done
 
 notice "Website refreshed."
 
-# { test "$DIR" = "." } || { sleep 10 }

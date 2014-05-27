@@ -9,7 +9,7 @@ total_fonts=${#fonts}
 { test -d fonts } && {
     notice "Indexing custom fonts"
     rm -f ${destination}/css/custom.fonts.css
-    mkdir -p ${destination}/fonts
+    mkdir -p ${destination}/css
     ttf=`find -L fonts -iname '*.ttf'`
     for f in ${(f)ttf}; do
 	ffile=`basename "$f"`

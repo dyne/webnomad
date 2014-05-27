@@ -1,15 +1,16 @@
 #!/usr/bin/env zsh
 
+STYLING=0
 
 # make it work to browse results on file://
 baseurl="file://`pwd`/test/"
-
-destination="test"
 
 includejs+=(jquery.min.js jquery.sidr.js)
 
 includecss+=(jquery.sidr.dark.css)
 
+{ test "$STYLING" = "1" } || { render_test_footer() { return 0 }; return 0 }
+    
 # Font size selector
 
 font-size_select() {
