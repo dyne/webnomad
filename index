@@ -59,6 +59,7 @@ filetype_icon() {
 	sql) res=text-x-sql.png ;;
 	vcart) res=text-x-vcard.png ;;
 	dmg) res=dmg.png ;;
+	pdf) res=application-pdf.png ;;
     esac
     # analize name
     case $name:l in
@@ -79,46 +80,142 @@ filetype_icon() {
     print "$res"
 }
 
+
+# should be called from inside the destination directory
+recursive_index() {
+#    render_header "<link rel=\"stylesheet\" href=\"css/blueimp-gallery.min.css\" />"
+    { test -d "$1" } || { error "cannot index directory not found: $1"; return 1 }
+    
+    archive="$1"
+    dirs=`find "$archive" -type d`
+    basedir="/`basename "$archive"`/"
+
+    diralias="$2"
+
+    indextype="$3"
+
+    dest="`pwd`"
+
+    func "index archive $archive"
+    func "index basedir: $basedir"
+    func "index aliasdir: $diralias"
+    # copy default icons
+    mkdir -p $destination/icons$THUMB_SIZE
+    cp $SYS/icons/$THUMB_SIZE/image-x-generic.png $destination/icons$THUMB_SIZE
+    cp $SYS/icons/$THUMB_SIZE/symlink.png         $destination/icons$THUMB_SIZE
+    cp $SYS/icons/$THUMB_SIZE/folder.png          $destination/icons$THUMB_SIZE
+    cp $SYS/icons/$THUMB_SIZE/go-up.png          $destination/icons$THUMB_SIZE
+
+    for d in ${(f)dirs}; do
+	dir="${d##*${basedir}}"
+	func "actual file path: $d"
+	func "relative path: $dir"
+	func "destination: ${dest}/${dir}"
+
+	mkdir -p "${dest}/${dir}"
+	pushd    "${dest}/${dir}"
+
+	render_header > index${EXTENSION}
+	render_file "$DIR"/tmpl/navbar.html >> index${EXTENSION}
+	cat <<EOF >> index${EXTENSION}
+<div class="container-fluid">
+<article>
+EOF
+
+	# if indextype ends in _readme then renders README besides
+	 [[ "$indextype" =~ "readme" ]] && {
+	    test -r "${d}/README" } && {
+	    print "<div class=\"span4\">" >> index${EXTENSION} }
+
+	# takes 3 arguments: base dir, alias dir and indexed directory
+	# we must check if its the parent directory
+	index_${indextype%_readme*} "${archive}" "${diralias}" "${dir}" >> index${EXTENSION}
+	# here also strips the _readme modifier
+
+        [[ "$indextype" =~ "readme" ]] && {
+	    test -r "${d}/README" } && {
+	    
+	    print "</div><div class=\"span6\"><pre>" >> index${EXTENSION}
+	    cat "${d}/README" >> index${EXTENSION}
+
+	    print "</pre></div>" >> index${EXTENSION}
+	}
+
+	cat <<EOF  >> index${EXTENSION}
+</article>
+</div>
+<p>&nbsp;</p>
+EOF
+
+	render_footer >> index${EXTENSION}
+
+	popd
+    done
+}
+
+
 index_short() {
-    func "index_long_preview \"$1\" \"$2\" \"$3\""
+    func "index_short \"$1\" \"$2\" \"$3\""
     dir="${1}${3}"
     { test -d "$dir" } || { error "cannot index: not a directory '$dir'"; return 1 }
     files=()
-    ttmp=`ls "$dir" | awk '
+    ttmp=`ls -l --time-style=long-iso "$dir" | awk '
 /^total/ { next }
 /^$/ { next }
-{ printf "files+=(\"$1\");" }
+/'"index${EXTENSION}"'/ { next }
+{ printf "files+=(\"%s\");", $8 }
 '`
     { test $? = 0 } || {
 	error "Error parsing directory: $dir"
 	return 1 }
-    
+    func "$ttmp"
     eval "$ttmp"
     
     act "${#files} files parsed in $dir"
 
     diralias="$2"
     dirbase="$3"
+
     # setup paths for test
     if [ "$CMD" = "test" ]; then
 	LINK_PREFIX="file://${dir}"
+	tpwd=`pwd`
+	parent="${tpwd%/*}"
     else
 	LINK_PREFIX="${diralias}${dirbase}"
+	parent=".."
     fi
     func "LINK_PREFIX = $LINK_PREFIX"
 
     cat <<EOF
 <table class="table table-hover table-condensed">
 <thead><tr>
-<th class="col-sm-1 col-md-1 col-lg-1"><!-- filetype icon --></th>
-<th class="col-sm-3 col-md-4 col-lg-4"><!-- file name --></th>
+<th style="width:100px"><!-- filetype icon --></th>
+<th><!-- file name --></th>
 </tr></thead>
 EOF
+
+    # if not parent offer to go up
+    { test "$dirbase" = "" } || {
+	func "dirbase: $dirbase"
+	func "parent: $parent"
+	cat <<EOF
+<tr>
+<td style="vertical-align:middle;">
+<a href="${parent}/index${EXTENSION}">
+<img src="${WEB_ROOT}/icons${THUMB_SIZE}/go-up.png"
+ alt="parent directory" title="go to parent"></a></td>
+<td style="vertical-align:middle;font-size:1.5em;word-wrap:break-word">
+<a href="${parent}/index${EXTENSION}">
+.. [ parent ]</a></td>
+</tr>
+EOF
+    }
     
     for f in ${files}; do
 	name="${f}"
 	ext="${name##*.}" # file extension
-	file="${1}/${name}" # file path
+	file="${dir}/${name}" # file path
 
 	typefield=""
 	namefield=""
@@ -129,22 +226,26 @@ EOF
 
 	if [ -L "$file" ]; then # is a symlink
 	    if [ -d "$file" ]; then # symlink to folder
+		func "$name folder symlink"
 		link="<a href=\"${name}/index${EXTENSION}\">"
-		typefield="${link}<img src=\"${WEB_ROOT}/icons/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
+		typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
 		namefield="${link}${name}</a>"
 	    else                    # symlink to file
+		func "$name file symlink"
 		link="<a href=\"${LINK_PREFIX}/${name}\">"
-		typefield="${link}<img src=\"${WEB_ROOT}/icons/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
+		typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
 		namefield="${link}${name}</a>"
 	    fi
 	elif [ -d "$file" ]; then   # is a folder
+	    func "$name folder"
 	    link="<a href=\"${name}/index${EXTENSION}\">"
-	    typefield="${link}<img src=\"${WEB_ROOT}/icons/folder.png\" alt=\"folder\" ${icon_width}></a>"
+	    typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/folder.png\" alt=\"folder\" ${icon_width}></a>"
 	    namefield="${link}${name}</a>"
 	else                        # is a file
+	    func "$name file"
 	    { test "$icon" = "" } && { icon="`filetype_icon ${file}`" }
 	    link="<a href=\"${LINK_PREFIX}/${name}\">"
-	    typefield="${link}<img src=\"${WEB_ROOT}/icons/${icon}\" alt=\"${icon}\" ${icon_width}></a>"
+	    typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/${icon}\" alt=\"${icon}\" ${icon_width}></a>"
 	    namefield="${link}${name}</a>"
 	fi
 
@@ -159,10 +260,10 @@ EOF
 	{ test "$icon" = "" } && { continue }
 	popd
 	# copy the icon file
-	{ test -r ${destination}/icons/${icon} } || {
+	{ test -r ${destination}/icons${THUMB_SIZE}/${icon} } || {
 	    func "copy icon in place: $icon (PWD: `pwd`)"
 	    cp $SYS/icons/$THUMB_SIZE/${icon} \
-		${destination}/icons/${icon}
+		${destination}/icons${THUMB_SIZE}/${icon}
 	}
 	pushd "$tpwd"
 
@@ -257,24 +358,24 @@ EOF
 	if [ -L "$file" ]; then # is a symlink
 	    if [ -d "$file" ]; then # symlink to folder
 		link="<a href=\"${name}/index${EXTENSION}\">"
-		typefield="${link}<img src=\"${WEB_ROOT}/icons/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
+		typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
 		namefield="${link}${name}</a>"
 		previewfield="<!-- folder -->"
 	    else                    # symlink to file
 		link="<a href=\"${LINK_PREFIX}/${name}\">"
-		typefield="${link}<img src=\"${WEB_ROOT}/icons/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
+		typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
 		namefield="${link}${name}</a>"
 		previewfield="${link}${preview}</a>"
 	    fi
 	elif [ -d "$file" ]; then   # is a folder
 	    link="<a href=\"${name}/index${EXTENSION}\">"
-	    typefield="${link}<img src=\"${WEB_ROOT}/icons/folder.png\" alt=\"folder\" ${icon_width}></a>"
+	    typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/folder.png\" alt=\"folder\" ${icon_width}></a>"
 	    namefield="${link}${name}</a>"
 	    previewfield="<!-- folder -->"
 	else                        # is a file
 	    { test "$icon" = "" } && { icon="`filetype_icon ${file}`" }
 	    link="<a href=\"${LINK_PREFIX}/${name}\">"
-	    typefield="${link}<img src=\"${WEB_ROOT}/icons/${icon}\" alt=\"${icon}\" ${icon_width}></a>"
+	    typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/${icon}\" alt=\"${icon}\" ${icon_width}></a>"
 	    namefield="${link}${name}</a>"
 	    previewfield="${link}${preview}</a>"
 	fi
@@ -294,10 +395,10 @@ EOF
 	{ test "$icon" = "" } && { continue }
 	popd
 	# copy the icon file
-	{ test -r ${destination}/icons/${icon} } || {
+	{ test -r ${destination}/icons${THUMB_SIZE}/${icon} } || {
 	    func "copy icon in place: $icon (PWD: `pwd`)"
 	    cp $SYS/icons/$THUMB_SIZE/${icon} \
-		${destination}/icons/${icon}
+		${destination}/icons${THUMB_SIZE}/${icon}
 	}
 	pushd "$tpwd"
 	

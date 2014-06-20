@@ -32,41 +32,37 @@ act
 
 mkdir -p views/js
 mkdir -p views/css
+touch views/css/custom.css
+
 { test -r views/index.html } || {
     cat <<EOF > views/index.html
 <h1>Hello world</h1>
 
 <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do
-eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
-minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-aliquip ex ea commodo consequat. Duis aute irure dolor in
-reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-culpa qui officia deserunt mollit anim id est laborum.</p>
+eiusmod tempor incididunt ut labore et dolore magna aliqua.
+</p>
+
+<blockquote>Ut enim ad minim veniam, quis nostrud exercitation ullamco
+laboris nisi ut aliquip ex ea commodo consequat.</blockquote>
+
+<p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum
+dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+proident, sunt in culpa qui officia deserunt mollit anim id est
+laborum.</p>
 
 EOF
 }
 
 mkdir -p tmpl
 { test -r tmpl/header.html } || {
-    cp -v ${SYS}/tmpl/header.html tmpl }
+    cp -v ${SYS}/tmpl/header.html tmpl/ }
 
 { test -r tmpl/footer.html } || {
-    cp -v ${SYS}/tmpl/footer.html tmpl }
+    cp -v ${SYS}/tmpl/footer.html tmpl/ }
 
 { test -r tmpl/navbar.html } || {
-    cp -v ${SYS}/tmpl/navbar.html tmpl }
+    cp -v ${SYS}/tmpl/navbar.html tmpl/ }
 
-{ test -r views/js/html5.js } || {
-    cp -v ${SYS}/js/html5.js views/js }
-
-{ test -r views/css/bootstrap.css } || {
-    cp -v ${SYS}/js/bootstrap* views/js
-    cp -v ${SYS}/css/bootstrap* views/css }
-
-{ test -r views/css/blueimp-gallery.css } || {
-    cp -v ${SYS}/js/*blueimp* views/js
-    cp -v ${SYS}/css/*blueimp* views/css }
 
 { test -r config.zsh } || {
     cat <<EOF > config.zsh
@@ -84,10 +80,6 @@ EXTENSION=".html"
 # what is the root of this website url, after the domain
 # leave blank if relative, or for instance /blog/
 WEB_ROOT=""
-
-# where on the server filesystem are the indexed files located
-# this directory should be aliased by apache
-INDEX_PREFIX=""
 
 EOF
 }

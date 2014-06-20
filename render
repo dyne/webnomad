@@ -39,13 +39,6 @@ CMD="$1"
 ####################################
 # Base configuration
 
-# base to be added to all urls
-# used by test to have all css and js in place
-baseurl=""
-
-# destination directory to render
-# also used by test to substitute pub/
-destination="pub"
 
 # web root for all urls
 WEB_ROOT=""
@@ -60,7 +53,8 @@ THUMB_SIZE=256
 source config.zsh
 ####################################
 
-typeset -h dst # full path to destination for render_ functions
+typeset -h dst
+
 typeset -alU includecss # array of css files to include
 typeset -alU includejs # array of js files to include
 typeset -alU fonts # array of available fonts
@@ -71,16 +65,23 @@ unsetopt CASE_GLOB
 notice "Rendering your website"
 act "Title: $B $TITLE $r"
 
+# destination directory to render
+# also used by test to substitute pub/
+destination="$DIR/pub"
+
 # setup paths for test
 { test "$CMD" = "test" } && {
     LINK_PREFIX="file://`pwd`"
     WEB_ROOT="file://`PWD=${SYS} pwd`/test"
-    baseurl="$WEB_ROOT"
     destination="$DIR/test"
     notice "Test settings for indexing"
-    act "SYS = $SYS"
-    act "WEB_ROOT = $WEB_ROOT"
 }
+
+# base to be added to all urls, from config.zsh
+baseurl="$WEB_ROOT"
+
+act "SYS = $SYS"
+act "WEB_ROOT = $WEB_ROOT"
 
 render_file() { sed -e "s@\${baseurl}@${baseurl}@g" $@ }
 
@@ -105,26 +106,27 @@ render_header() {
 
 <!-- Bootstrap -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link href="${baseurl}css/bootstrap.min.css" rel="stylesheet" />
+    <link href="${baseurl}/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="${baseurl}/css/bootstrap-responsive.min.css" rel="stylesheet" />
 
 EOF
     { test -r "$DIR"/views/css/custom.css } && {
 	cat <<EOF
-    <link href="${baseurl}css/custom.css" rel="stylesheet" />
+    <link href="${baseurl}/css/custom.css" rel="stylesheet" />
 EOF
     }
 
     # add css needed for internal functions
     for c in $includecss; do
 	cat <<EOF
-    <link href="${baseurl}css/${c}" rel="stylesheet" />
+    <link href="${baseurl}/css/${c}" rel="stylesheet" />
 EOF
 	cp "$SYS"/css/${c} "${destination}"/css/
     done
 
     { test -f "${destination}"/css/custom.fonts.css } && {
 	cat <<EOF
-    <link href="${baseurl}css/custom.fonts.css" rel="stylesheet" />
+    <link href="${baseurl}/css/custom.fonts.css" rel="stylesheet" />
 EOF
     }
 
@@ -137,11 +139,11 @@ EOF
 }
 
 render_footer() {
-    render_file "$DIR"/tmpl/footer.html
-
     cat <<EOF
 </div><!--/.container-->
 EOF
+
+    render_file "$DIR"/tmpl/footer.html
 
     # add any string argument to the footer
     { test "$1" = "" } || { print "${@}"; print }
@@ -156,8 +158,7 @@ EOF
     done
 
     # if test mode then render the test footer
-    { test "$destination" = "test" } && {
-	render_test_footer }
+    { test "$CMD" = "test" } && { render_test_footer }
 
 cat <<EOF
   </body>
@@ -216,64 +217,6 @@ render_html() {
 
 }
 
-# should be called from inside the destination directory
-recursive_index() {
-#    render_header "<link rel=\"stylesheet\" href=\"css/blueimp-gallery.min.css\" />"
-    { test -d "$1" } || { error "cannot index directory not found: $1"; return 1 }
-    
-    archive="$1"
-    dirs=`find "$archive" -type d`
-    basedir="/`basename "$archive"`/"
-
-    diralias="$2"
-
-    dest="`pwd`"
-
-    func "index archive $archive"
-    func "index basedir: $basedir"
-    func "index aliasdir: $diralias"
-    # copy default icons
-    mkdir -p $destination/icons
-    cp $SYS/icons/$THUMB_SIZE/image-x-generic.png $destination/icons
-    cp $SYS/icons/$THUMB_SIZE/symlink.png $destination/icons
-    cp $SYS/icons/$THUMB_SIZE/folder.png $destination/icons
-
-    for d in ${(f)dirs}; do
-	dir="${d##*${basedir}}"
-	func "actual file path: $d"
-	func "relative path: $dir"
-	func "destination: ${dest}/${dir}"
-
-	mkdir -p "${dest}/${dir}"
-	pushd    "${dest}/${dir}"
-
-	render_header > index${EXTENSION}
-	render_file "$DIR"/tmpl/navbar.html >> index${EXTENSION}
-	cat <<EOF >> index${EXTENSION}
-<div class="container">
-<article>
-EOF
-
-	# takes 3 arguments: base dir, alias dir and indexed directory
-	# we must check if its the parent directory
-	index_long_preview "${archive}" "${diralias}" "${dir}" >> index${EXTENSION}
-	# if [ "$dir" = "" ]; then
-	#     index_dir "${d}" "${diralias}" "" >> index${EXTENSION}	    
-	# else
-	#     index_dir "${d%%${dir}*}" "${diralias}" "${dir}" >> index${EXTENSION}
-	# fi
-	cat <<EOF  >> index${EXTENSION}
-</article>
-</div>
-<p>&nbsp;</p>
-EOF
-
-	render_footer >> index${EXTENSION}
-
-	popd
-    done
-}
-
 read_meta() {
     tmp=`head -n 3 | awk '
     !/^#/ { next }
@@ -284,23 +227,61 @@ read_meta() {
     eval "$tmp"
 }
 
+# calculate the destination path for a file or folder to render from views
+calc_dest() {
+    { test -r "$1" } || {
+	error "error calculating destination: cannot read $1"
+	return 0 }
+    # optional 2nd arg: extension
+    ext="$2"
+    { test "$ext" = "" } && { ext="$EXTENSION" }
+
+    func "calc_dest \"$1\" \"$2\""
+ 
+    dstfile=${1##*/}
+    dstfile=${dstfile%.*}${ext}
+    func "destination file: $dstfile"
+    dstdir=${1##*views/}
+    dstdir=${dstdir%/*}
+    func "destination subdir: $dstdir"
+
+    # compute destination file
+    if [ "${dstfile%.*}" = "${dstdir%.*}" ]; then
+	# no subdirs, root level
+	dst="${destination}/${dstfile}"
+    else
+	dst="${destination}/${dstdir}/${dstfile}"
+	mkdir -p ${destination}/${dstdir}
+    fi
+    func "calculated destination: $dst"
+    print $dst
+}
+
+#########    
+# MAIN
 
 { test "$1" = "source" } && { return 0 }
 { test "$1" = "test" } && { 
     act "Local test rendering inside test/"
     source $SYS/test }
 
+# copy core bootstrap files in place
+mkdir -p "$destination/css"
+mkdir -p "$destination/js"
+
+{ test -r "$destination"/css/bootstrap.css } || {
+    cp "$SYS"/css/bootstrap.css            "$destination"/css/
+    cp "$SYS"/css/bootstrap.min.css        "$destination"/css/
+    cp "$SYS"/css/bootstrap-responsive.css "$destination"/css/
+}
+cp "$SYS"/js/bootstrap.min.js          "$destination"/js/
+cp "$SYS"/js/html5.js                 "$destination"/js/
+
+
+
 # prepare all fonts
 source $SYS/fonts
 
-# Main
-mkdir -p ${destination}/css
-mkdir -p ${destination}/js
-
-cat << EOF > ${destination}/.htaccess
-DirectoryIndex index index.html index.php
-DefaultType text/html
-EOF
 
 act -n "Clean up all temp files ... "
 temps=(`find "$destination" -type f -name 'temp-*'`)
@@ -312,7 +293,7 @@ print "done"
 txts=(`find views -maxdepth 1 -type f -name '*.txt'`)
 for t in $txts; do
     txt=`basename $t`
-    dst="${destination}/$txt"
+    dst=`calc_dest "$t" .txt`
     act "publishing plain text: $txt"
     cp $t ${destination}/$txt
 done
@@ -324,8 +305,7 @@ for src in $htmls; do
     # read meta commands
     cat ${src} | read_meta
 
-    # compute destination file
-    dst="${destination}/`basename ${src%.*}`${EXTENSION}"
+    dst=`calc_dest "$src"`
 
     render_header > $dst
 
@@ -334,7 +314,6 @@ for src in $htmls; do
 </head> <!-- end of <head> -->
 
 <body>
-  <div class="container">
 EOF
 
     # don't forget the navbar
@@ -342,6 +321,7 @@ EOF
 
     cat <<EOF >> $dst
 <p>&nbsp;</p>
+<div class="container-fluid">
 <article>
 EOF
 
@@ -363,45 +343,53 @@ EOF
 
 done
 
+
 # render all image galleries
 source $SYS/gallery
 gals=(`find views -type f -name '*.gal'`)
 gals+=(`find views -type f -name '*.gallery'`)
-for src in $gals; do
-    cat ${src} | read_meta
-    dst="${destination}/`basename ${src%.*}`"
-    act -n "Gallery rendering: $B $dst $r ... "
-    cat $src | render_gallery > $dst
-    print "done"
-done
+if [[ "${#gals}" > 0 ]]; then
 
+    cp "$SYS"/js/*blueimp*     "$destination"/js/
+    cp "$SYS"/css/*blueimp*    "$destination"/css/
+    cp "$SYS"/js/jquery.min.js "$destination"/js/
+
+    for src in $gals; do
+	cat ${src} | read_meta
+	dst=`calc_dest "$src"`
+	act -n "Gallery rendering: $B $dst $r ... "
+	cat $src | render_gallery > $dst
+	print "done"
+    done
+
+fi
 
 # render all directory indexes
 idxs=(`find views -type f -name '*.idx'`)
 idxs+=(`find views -type f -name '*.index'`)
 { test ${#idxs} = 0 } || {
-    source "$SYS/index"
+    source $SYS/index
     for idx in $idxs; do
-	dst=`basename ${idx%%.*}`
+	dst=`calc_dest "$idx"`
+	# index always use dirs
+	dst="${dst%.*}"
 	notice "Directory index rendering to: $dst"
 	dirs=`cat ${idx}`
 	for d in ${(f)dirs}; do
-	    mkdir -p "${destination}/${dst}"
-	    pushd "${destination}/${dst}"
-	    recursive_index "${d[(ws: :)1]}" "${d[(ws: :)2]}"
+	    mkdir -p "${dst}"
+	    pushd "${dst}"
+	    recursive_index "${d[(ws: :)1]}" "${d[(ws: :)2]}" "${d[(ws: :)3]}"
 	    popd
 	done
     done
-    # copy icons only if needed
-    rsync -rlt "$SYS/icons" "${destination}/"
 }
 
 # copy to destination all subdirs in views/
-for m in `find views -mindepth 1 -type d `; do
-    act -n "publishing $B $m $r ... "
-    rsync -r $m ${destination}/
-    print "done"
-done
+act -n "publishing all $B views $r ... "
+rsync -a -W --ignore-existing "$DIR/views/" "${destination}/"
+# make sure that new css styles are updates
+cp -f "$DIR/views/css/custom.css" "${destination}/css/"
+print "done"
 
 # if the whole website is a "slideshow" (set in config.zsh) then we start with
 # a full screen slideshow of all uploaded photos, cycling random every time.

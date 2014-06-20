@@ -1,38 +1,51 @@
 # prepare fonts
 
-fonts=('Arial' 'Arial Black' 'Comic Sans MS' 'Courier New' 'Georgia' 'Impact' 'Monaco' 'Lucida Grande')
-fonts+=('Book Antiqua' 'Tahoma' 'Times New Roman' 'Trebuchet MS' 'Verdana' 'Geneva' 'New York')
+# fonts=('Arial' 'Arial Black' 'Comic Sans MS' 'Courier New' 'Georgia' 'Impact' 'Monaco' 'Lucida Grande')
+# fonts+=('Book Antiqua' 'Tahoma' 'Times New Roman' 'Trebuchet MS' 'Verdana' 'Geneva' 'New York')
 custom_fonts=()
-total_fonts=${#fonts}
+total_fonts=0 # ${#fonts}
 
 # if there are custom fonts add them
 { test -d fonts } && {
     notice "Indexing custom fonts"
     rm -f ${destination}/css/custom.fonts.css
     mkdir -p ${destination}/css
+
     ttf=`find -L fonts -iname '*.ttf'`
     for f in ${(f)ttf}; do
 	ffile=`basename "$f"`
 	cp "$f" ${destination}/css/"$ffile"
 	custom_fonts+=("${ffile%.ttf}")
 	cat <<EOF >> ${destination}/css/custom.fonts.css
-	@font-face { font-family: '${ffile%.ttf}';
-             src: url('$ffile') format('truetype'); }
+@font-face { font-family: '${ffile%.ttf}';
+    src: url('$ffile') format('truetype'); }
 EOF
 	total_fonts=$(( $total_fonts + 1 ))
     done
+
     otf=`find -L fonts -iname '*.otf'`
     for f in ${(f)otf}; do
 	ffile=`basename "$f"`
 	cp "$f" ${destination}/css/"$ffile"
 	custom_fonts+=("${ffile%.otf}")
 	cat <<EOF >> ${destination}/css/custom.fonts.css
-	@font-face { font-family: '${ffile%.otf}';
-             src: url('$ffile') format('opentype'); }
+@font-face { font-family: '${ffile%.otf}';
+    src: url('$ffile') format('opentype'); }
 EOF
 	total_fonts=$(( $total_fonts + 1 ))
     done
 
+    woff=`find -L fonts -iname '*.woff'`
+    for f in ${(f)woff}; do
+	ffile=`basename "$f"`
+	cp "$f" ${destination}/css/"$ffile"
+	custom_fonts+=("${ffile%.woff}")
+	cat <<EOF >> ${destination}/css/custom.fonts.css
+@font-face { font-family: '${ffile%.woff}';
+         src: url('$ffile') format('woff'); }
+EOF
+	total_fonts=$(( $total_fonts + 1 ))
+    done
 
     act "$total_fonts custom fonts indexed"
 }
