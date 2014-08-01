@@ -188,14 +188,17 @@ render_html() {
 	act -n "${#mds} markdown fields "
 	
 	# check which markdown parser is available in PATH
-	command -v maruku > /dev/null
-	if [ "$?" = "0" ]; then parser="maruku --html-frag"
-	else command -v markdown > /dev/null;
+        command -v pandoc > /dev/null
+        if [ "$?" = "0" ]; then parser="pandoc -f markdown_github -t html5"
+        else command -v maruku > /dev/null
+	  if [ "$?" = "0" ]; then parser="maruku --html-frag"
+	  else command -v markdown > /dev/null;
 	    if [ "$?" = "0" ]; then parser=markdown
 	    else command -v multimarkdown > /dev/null
-		if [ "$?" = "0"]; then parser=multimarkdown
-		fi
+              if [ "$?" = "0"]; then parser=multimarkdown
+              fi
 	    fi
+          fi
 	fi
 
 	# parses all html and renders each markdown in the html
