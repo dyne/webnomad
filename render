@@ -50,6 +50,9 @@ INDEX_PREFIX=""
 # thumbnail size
 THUMB_SIZE=256
 
+# font ratio
+FONT_RATIO=30
+
 source config.zsh
 ####################################
 
@@ -108,8 +111,8 @@ render_header() {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link href="${baseurl}/css/bootstrap.min.css" rel="stylesheet" />
     <link href="${baseurl}/css/bootstrap-responsive.min.css" rel="stylesheet" />
-
 EOF
+
     { test -r "$DIR"/views/css/custom.css } && {
 	cat <<EOF
     <link href="${baseurl}/css/custom.css" rel="stylesheet" />
@@ -159,6 +162,65 @@ EOF
 
     # if test mode then render the test footer
     { test "$CMD" = "test" } && { render_test_footer }
+
+    # if there is flowtype.js then use it
+    { test -r "$destination"/js/flowtype.js } && {
+
+        cat <<EOF
+<script type="text/javascript">
+\$('p').flowtype({
+   minimum   : 500,
+   maximum   : 1200,
+   minFont   : 12,
+   maxFont   : 40,
+   fontRatio : $FONT_RATIO
+});
+\$('blockquote').flowtype({
+   minimum   : 500,
+   maximum   : 1200,
+   minFont   : 12,
+   maxFont   : 40,
+   fontRatio : $(( $FONT_RATIO + 3 ))
+});
+\$('h1').flowtype({
+   minimum   : 500,
+   maximum   : 1200,
+   minFont   : 12,
+   maxFont   : 40,
+   fontRatio : $(( $FONT_RATIO - 20 ))
+});
+\$('h2').flowtype({
+   minimum   : 500,
+   maximum   : 1200,
+   minFont   : 12,
+   maxFont   : 40,
+   fontRatio : $(( $FONT_RATIO - 15 ))
+});
+\$('h3').flowtype({
+   minimum   : 500,
+   maximum   : 1200,
+   minFont   : 12,
+   maxFont   : 40,
+   fontRatio : $(( $FONT_RATIO - 10 ))
+});
+\$('h4').flowtype({
+   minimum   : 500,
+   maximum   : 1200,
+   minFont   : 12,
+   maxFont   : 40,
+   fontRatio : $(( $FONT_RATIO - 5 ))
+});
+\$('h5').flowtype({
+   minimum   : 500,
+   maximum   : 1200,
+   minFont   : 12,
+   maxFont   : 40,
+   fontRatio : $(( $FONT_RATIO - 3 ))
+});
+
+</script>
+EOF
+    }
 
 cat <<EOF
   </body>
@@ -213,6 +275,9 @@ render_html() {
     }
 
     cat $tmp
+
+# extra js for html pages
+    includejs+=(flowtype.js)
 
 # clean up from temporary files
     rm -f tmp.*
@@ -310,6 +375,8 @@ for src in $htmls; do
 
     dst=`calc_dest "$src"`
 
+    includecss+=(flowtype.css)
+
     render_header > $dst
 
     # close <head> as nothing else is needed
@@ -391,7 +458,8 @@ idxs+=(`find views -type f -name '*.index'`)
 act -n "publishing all $B views $r ... "
 rsync -a -W --ignore-existing "$DIR/views/" "${destination}/"
 # make sure that new css styles are updates
-cp -f "$DIR/views/css/custom.css" "${destination}/css/"
+{ test -r "$DIR/views/css/custom.css" } && {
+    cp -f "$DIR/views/css/custom.css" "${destination}/css/" }
 print "done"
 
 # if the whole website is a "slideshow" (set in config.zsh) then we start with

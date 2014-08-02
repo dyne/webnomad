@@ -1,0 +1,27 @@
+/* standard CSS values for flowtype
+   overridden by custom.css
+   see https://github.com/simplefocus/FlowType.JS
+
+   Tweaks for good readability of text
+*/
+
+body {
+   font-size: 18px;
+   font-smooth: always;
+   -webkit-font-smoothing: antialiased;
+}
+
+p,blockquote {
+    letter-spacing: 0.01rem;
+}
+
+h1,h2,h3,h4,h5,h6,p {
+   line-height: 1.45;
+}
+
+h1 { font-size: 4em;   }
+h2 { font-size: 3em;   }
+h3 { font-size: 2.8em; }
+h4 { font-size: 2.5em; }
+h5 { font-size: 2.3em; }
+h6 { font-size: 2.0em; }
