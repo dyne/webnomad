@@ -74,12 +74,17 @@ KEYWORDS="web, design, html"
 # Anything below is safe to leave untouched
 #
 
-# what file extension to use for html files
+# What file extension to use for html files
 EXTENSION=".html"
 
-# what is the root of this website url, after the domain
+# What is the root of this website url, after the domain
 # leave blank if relative, or for instance /blog/
 WEB_ROOT=""
+
+# What is the size ratio of text with respect to the width
+# of its container element. This is better than setting the
+# text size in an absolute way (we use Flowtype)
+FONT_RATIO=30
 
 EOF
 }
