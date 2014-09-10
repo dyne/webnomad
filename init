@@ -81,10 +81,13 @@ EXTENSION=".html"
 # leave blank if relative, or for instance /blog/
 WEB_ROOT=""
 
+# Uncomment for Flowtype
+# FLOWTYPE=1
 # What is the size ratio of text with respect to the width
 # of its container element. This is better than setting the
 # text size in an absolute way (we use Flowtype)
-FONT_RATIO=30
+# FONT_RATIO=30
+
 
 EOF
 }

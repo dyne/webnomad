@@ -163,8 +163,7 @@ EOF
     # if test mode then render the test footer
     { test "$CMD" = "test" } && { render_test_footer }
 
-    # if there is flowtype.js then use it
-    { test -r "$destination"/js/flowtype.js } && {
+    [[ "$FLOWTYPE" = "" ]] || { # if there is flowtype.js then use it
 
         cat <<EOF
 <script type="text/javascript">
@@ -277,7 +276,8 @@ render_html() {
     cat $tmp
 
 # extra js for html pages
-    includejs+=(flowtype.js)
+    [[ "$FLOWTYPE" = "" ]] || {
+	includejs+=(flowtype.js) }
 
 # clean up from temporary files
     rm -f tmp.*
@@ -375,7 +375,8 @@ for src in $htmls; do
 
     dst=`calc_dest "$src"`
 
-    includecss+=(flowtype.css)
+    [[ "$FLOWTYPE" = "" ]] || {
+	includecss+=(flowtype.css) }
 
     render_header > $dst
 
