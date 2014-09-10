@@ -7,6 +7,8 @@
 
 http://www.dyne.org/software/webnomad
 
+-> [Traducción al español](README-es.md)
+
 ## INTRODUCTION
 
 WebNomad is a set of shell scripts to generate websites and image
