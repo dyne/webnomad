@@ -100,16 +100,18 @@ of images and linking to the originals.
 
 In order to do so create a file in views with extension `.idx` or
 `.index`, then fill it in with the needed configurations, for instance a
-file my_pictures_folder.index can contain
+file my_pictures_folder.index can contain one line (# is a comment)
 
-    THUMB_SIZE=128
-    LINK_PREFIX=archive
-    index /home/jaromil/pics
+    # path to be indexed    url subfolder    index type
+    /home/jaromil/pics      pics             short
 
-This will produce a pub/my_pictures_folder.html file which will list
+This will produce a pics/index.html url which will list
 all files inside that directory with previews and further links to
 subfolders that are indexed the same way.
 
+In some cases it can be useful to serve the actual downloads from a
+different place than `WEB_ROOT`, be it another server for assets or an
+apache alias. To configure this use `FILES_ROOT` in config.zsh.
 
 ## DEVELOPERS
 

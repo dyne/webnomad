@@ -45,7 +45,7 @@ WEB_ROOT=""
 
 # prefix to all indexed files
 # this can be a full path on the filesystem
-INDEX_PREFIX=""
+FILES_ROOT=""
 
 # thumbnail size
 THUMB_SIZE=256
@@ -74,7 +74,6 @@ destination="$DIR/pub"
 
 # setup paths for test
 { test "$CMD" = "test" } && {
-    LINK_PREFIX="file://`pwd`"
     WEB_ROOT="file://`PWD=${SYS} pwd`/test"
     destination="$DIR/test"
     notice "Test settings for indexing"
@@ -298,28 +297,28 @@ read_meta() {
 # calculate the destination path for a file or folder to render from views
 calc_dest() {
     { test -r "$1" } || {
-	error "error calculating destination: cannot read $1"
-	return 0 }
+	    error "error calculating destination: cannot read $1"
+	    return 0 }
     # optional 2nd arg: extension
     ext="$2"
     { test "$ext" = "" } && { ext="$EXTENSION" }
-
+    
     func "calc_dest \"$1\" \"$2\""
- 
+    
     dstfile=${1##*/}
     dstfile=${dstfile%.*}${ext}
     func "destination file: $dstfile"
     dstdir=${1##*views/}
     dstdir=${dstdir%/*}
     func "destination subdir: $dstdir"
-
+    
     # compute destination file
     if [ "${dstfile%.*}" = "${dstdir%.*}" ]; then
-	# no subdirs, root level
-	dst="${destination}/${dstfile}"
+	    # no subdirs, root level
+	    dst="${destination}/${dstfile}"
     else
-	dst="${destination}/${dstdir}/${dstfile}"
-	mkdir -p ${destination}/${dstdir}
+	    dst="${destination}/${dstdir}/${dstfile}"
+	    mkdir -p ${destination}/${dstdir}
     fi
     func "calculated destination: $dst"
     print $dst
@@ -440,18 +439,26 @@ idxs=(`find views -type f -name '*.idx'`)
 idxs+=(`find views -type f -name '*.index'`)
 { test ${#idxs} = 0 } || {
     source $SYS/index
+    # loop through all .idx files
     for idx in $idxs; do
-	dst=`calc_dest "$idx"`
-	# index always use dirs
-	dst="${dst%.*}"
-	notice "Directory index rendering to: $dst"
-	dirs=`cat ${idx}`
-	for d in ${(f)dirs}; do
-	    mkdir -p "${dst}"
-	    pushd "${dst}"
-	    recursive_index "${d[(ws: :)1]}" "${d[(ws: :)2]}" "${d[(ws: :)3]}"
-	    popd
-	done
+        # destination dir is named after the .idx file
+	    dst=`calc_dest "$idx"`
+	    # strip extension: an index builds a dir structure
+	    dst="${dst%.*}"
+	    notice "Directory index rendering to: $dst"
+        # loop through all contents of the idx:
+        # one directory to index recursively on each line
+	    dirs=`cat ${idx}`
+	    for d in ${(f)dirs}; do
+	        mkdir -p "${dst}"
+	        pushd "${dst}"
+            # recursion wrap:    $1=archive   $2=diralias     $3=indextype
+	        recursive_index "${d[(ws: :)1]}" "${d[(ws: :)2]}" "${d[(ws: :)3]}"
+            # archive: full path where the files to be indexed are found
+            # diralias: index directory appended to url
+            # indextype: type of index (short | long)
+	        popd
+	    done
     done
 }
 

@@ -81,6 +81,11 @@ EXTENSION=".html"
 # leave blank if relative, or for instance /blog/
 WEB_ROOT=""
 
+# What is the url for files in case indexing is used
+# this can be different from WEB_ROOT in order to serve
+# files from a position different from the web pages
+# FILES_ROOT=""
+ 
 # Uncomment for Flowtype
 # FLOWTYPE=1
 # What is the size ratio of text with respect to the width

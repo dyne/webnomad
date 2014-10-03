@@ -23,8 +23,6 @@
 # filetype_icon() - takes a filename as arg (can be file only or real path)
 #                 - returns a filename for the icon to be used from icons/
 #
-# index_dir() - indexes a directory into an html file linking all its contents
-#
 # preview_file() - takes a filename as arg
 #                  renders the file in a usable format (thumb if image, html if markdown, etc.)
 #                  returns the filename of the rendered result
@@ -34,17 +32,25 @@
 # format: filename;size;date
 typeset -alU files
 
-# globals set by recursive_index
-typeset archive=""
-typeset urlsuffix=""
-typeset indextype=""
-typeset dataurl=""
+typeset archive="" # full path to be indexed set by recursive_index()
+
+typeset diralias="" # index directory appended to url set by recursive_index()
+
+typeset url="" # address at which the web pages are available
+
+typeset data="" # address from which the data is downloadable
+
+typeset parent=".." # the directory above the current one
 
 
+
+# filetype_icon()
+# - takes a filename as arg (can be file only or real path)
+# - returns a filename for the icon to be used from icons/
 filetype_icon() {
 
-    { test "$1" = "" } && { 
-	error "filetype_icon called without argument"; return 1 }
+    { test "$1" = "" } && {
+    error "filetype_icon called without argument"; return 1 }
 
     fpath="$1"
     filename="${fpath##*/}"
@@ -55,31 +61,32 @@ filetype_icon() {
 
     # analize extensions, will be overridden by name
     case $ext:l in
-	txt) res=text-plain.png ;;
-	html) res=text-html.png ;;
-	xml) res=text-xml.png ;;
-	md5|sha*) res=hash.png ;;
-	asc|gpg) res=signature.png ;;
-	tex|md|org) res=text-x-texinfo.png ;;
-	patch) res=text-x-patch.png ;;
-	sql) res=text-x-sql.png ;;
-	vcart) res=text-x-vcard.png ;;
-	dmg) res=dmg.png ;;
-	pdf) res=application-pdf.png ;;
+        txt) res=text-plain.png ;;
+        html) res=text-html.png ;;
+        xml) res=text-xml.png ;;
+        md5|sha*) res=hash.png ;;
+        asc|gpg) res=signature.png ;;
+        tex|md|org) res=text-x-texinfo.png ;;
+        patch) res=text-x-patch.png ;;
+        sql) res=text-x-sql.png ;;
+        vcart) res=text-x-vcard.png ;;
+        dmg) res=dmg.png ;;
+        pdf) res=application-pdf.png ;;
     esac
+
     # analize name
     case $name:l in
-	changelog) res=text-x-changelog.png ;;
-	readme) res=text-x-readme.png ;;
-	install) res=text-x-install.png ;;
-	authors) res=text-x-authors.png ;;
-	makefile) res=text-x-makefile.png ;;
-	news|usage) res=text-x-nfo.png ;;
-	copying) res=text-x-copying.png ;;
-	known_bugs|todo) res=text-x-log.png ;;
-	sources) res=folder-development.png ;;
-	doc|docs) res=folder-documents.png ;;
-	releases|binaries) res=folder-downloads.png ;;
+        changelog) res=text-x-changelog.png ;;
+        readme) res=text-x-readme.png ;;
+        install) res=text-x-install.png ;;
+        authors) res=text-x-authors.png ;;
+        makefile) res=text-x-makefile.png ;;
+        news|usage) res=text-x-nfo.png ;;
+        copying) res=text-x-copying.png ;;
+        known_bugs|todo) res=text-x-log.png ;;
+        sources) res=folder-development.png ;;
+        doc|docs) res=folder-documents.png ;;
+        releases|binaries) res=folder-downloads.png ;;
     esac
     # todo using mimetype -b and more
 
@@ -87,24 +94,45 @@ filetype_icon() {
 }
 
 
-# should be called from inside the destination directory
+# external call from the render cli interface
+# should be called from inside the destination directory (pub or test)
+# it does cascade call anything else necessary in this file
 recursive_index() {
 #    render_header "<link rel=\"stylesheet\" href=\"css/blueimp-gallery.min.css\" />"
     { test -d "$1" } || { error "cannot index directory not found: $1"; return 1 }
-    
+
+    # archive:   full path where the files to be indexed are found
+    # diralias:  index directory appended to url
+    # indextype: type of index (short | long)
+
     archive="$1"
-    dirs=`find "$archive" -type d`
+
     basedir="/`basename "$archive"`/"
 
-    urlsuffix="$2"
+    diralias="$2"
 
     indextype="$3"
 
     dest="`pwd`"
 
-    func "index archive $archive"
+    # if its a test use the file:// root for test dir
+    [[ "$CMD" = "test" ]] && {
+        url="file://`PWD=${SYS} pwd`"
+        data="file://${archive}" }
+
+    [[ "$url" = "" ]] &&   { url="$WEB_ROOT/$diralias" }
+
+    [[ "$FILES_ROOT" = "" ]] || { data="$FILES_ROOT" }
+
+    # if no special root is specified then use web_root
+    [[ "$data" = "" ]] && { data="$WEB_ROOT" }
+
+    func "index archive: $archive"
     func "index basedir: $basedir"
-    func "index aliasdir: $urlsuffix"
+    func "index type: $indextype"
+    func "index url: $url"
+    func "index data: $data"
+
     # copy default icons
     mkdir -p $destination/icons$THUMB_SIZE
     cp $SYS/icons/$THUMB_SIZE/image-x-generic.png $destination/icons$THUMB_SIZE
@@ -112,85 +140,81 @@ recursive_index() {
     cp $SYS/icons/$THUMB_SIZE/folder.png          $destination/icons$THUMB_SIZE
     cp $SYS/icons/$THUMB_SIZE/go-up.png          $destination/icons$THUMB_SIZE
 
+    dirs=`find "$archive" -type d`
+
     for d in ${(f)dirs}; do
-	dir="${d##*${basedir}}"
-	func "actual file path: $d"
-	func "relative path: $dir"
-	func "destination: ${dest}/${dir}"
+        dir="${d##*${basedir}}"
+        func "actual file path: $d"
+        func "relative path: $dir"
 
-	mkdir -p "${dest}/${dir}"
-	pushd    "${dest}/${dir}"
+        # we must check if its the parent directory
+        [[ "$dir" = "$archive" ]] && { dir="" }
 
-	render_header > index${EXTENSION}
-	render_file "$DIR"/tmpl/navbar.html >> index${EXTENSION}
-	cat <<EOF >> index${EXTENSION}
+        func "destination: ${dest}/${dir}"
+
+        mkdir -p "${dest}/${dir}"
+        pushd    "${dest}/${dir}"
+
+        render_header > index${EXTENSION}
+        render_file "$DIR"/tmpl/navbar.html >> index${EXTENSION}
+        cat <<EOF >> index${EXTENSION}
 <div class="container-fluid">
 <article>
 EOF
 
-	# if indextype ends in _readme then renders README besides
-	 [[ "$indextype" =~ "readme" ]] && {
-	    test -r "${d}/README" } && {
-	    print "<div class=\"span4\">" >> index${EXTENSION} }
+        # if indextype ends in _readme then renders README besides
+        [[ "$indextype" =~ "readme" ]] && {
+            test -r "${d}/README" } && {
+            print "<div class=\"span4\">" >> index${EXTENSION} }
 
-	# takes 1 argument: indexed directory
-	# we must check if its the parent directory
-	index_${indextype%_readme*} "${dir}" >> index${EXTENSION}
-	# here also strips the _readme modifier
+        # string composited function call (indextype supports _appends)
+        # takes 3 arguments: base dir, alias dir and indexed directory
+        index_${indextype%_readme*} "${dir}" >> index${EXTENSION}
+        # here also strips the _readme modifier
 
         [[ "$indextype" =~ "readme" ]] && {
-	    test -r "${d}/README" } && {
-	    
-	    print "</div><div class=\"span6\"><pre>" >> index${EXTENSION}
-	    cat "${d}/README" >> index${EXTENSION}
+            test -r "${d}/README" } && {
 
-	    print "</pre></div>" >> index${EXTENSION}
-	}
+            print "</div><div class=\"span6\"><pre>" >> index${EXTENSION}
+            cat "${d}/README" >> index${EXTENSION}
 
-	cat <<EOF  >> index${EXTENSION}
+            print "</pre></div>" >> index${EXTENSION}
+        }
+
+        cat <<EOF  >> index${EXTENSION}
 </article>
 </div>
 <p>&nbsp;</p>
 EOF
 
-	render_footer >> index${EXTENSION}
+        render_footer >> index${EXTENSION}
 
-	popd
+        popd
     done
 }
 
 
 index_short() {
-    func "index_short \"$1\""
-    dir="${archive}${1}"
-    { test -d "$dir" } || { error "cannot index: not a directory '$dir'"; return 1 }
+    dir="${1}"
+    func "index_short \"$dir\""
+    func "index data: $archive/$dir"
+    func "index url: $url / $dir"
+
+    { test -d "$archive/$dir" } || { error "cannot index: not a directory '$archive/$dir'"; return 1 }
     files=()
-    ttmp=`ls -l --time-style=long-iso "$dir" | awk '
+    ttmp=`ls -l --time-style=long-iso "${archive}/${dir}" | awk '
 /^total/ { next }
 /^$/ { next }
 /'"index${EXTENSION}"'/ { next }
 { printf "files+=(\"%s\");", $8 }
 '`
     { test $? = 0 } || {
-	error "Error parsing directory: $dir"
-	return 1 }
-    func "$ttmp"
+        error "Error parsing directory: $archive/$dir"
+        return 1 }
+    # func "$ttmp"
     eval "$ttmp"
-    
+
     act "${#files} files parsed in $dir"
-
-    dirbase="$1"
-
-    # setup paths for test
-    if [ "$CMD" = "test" ]; then
-	LINK_PREFIX="file://${dir}"
-	tpwd=`pwd`
-	parent="${tpwd%/*}"
-    else
-	LINK_PREFIX="${urlsuffix}${dirbase}"
-	parent=".."
-    fi
-    func "LINK_PREFIX = $LINK_PREFIX"
 
     cat <<EOF
 <table class="table table-hover table-condensed">
@@ -201,10 +225,9 @@ index_short() {
 EOF
 
     # if not parent offer to go up
-    { test "$dirbase" = "" } || {
-	func "dirbase: $dirbase"
-	func "parent: $parent"
-	cat <<EOF
+    [[ "$dir" = "" ]] || {
+        func "parent: $parent"
+        cat <<EOF
 <tr>
 <td style="vertical-align:middle;">
 <a href="${parent}/index${EXTENSION}">
@@ -216,70 +239,71 @@ EOF
 </tr>
 EOF
     }
-    
+
     for f in ${files}; do
-	name="${f}"
-	ext="${name##*.}" # file extension
-	file="${dir}/${name}" # file path
+        name="${f}"
+        ext="${name##*.}" # file extension
+        file="${archive}/${dir}/${name}" # file path
 
-	typefield=""
-	namefield=""
-	previewfield=""
-	link=""
-	icon=""
-	icon_width="width=\"50px\""
+        typefield=""
+        namefield=""
+        previewfield=""
+        link=""
+        icon=""
+        icon_width="width=\"50px\""
 
-	if [ -L "$file" ]; then # is a symlink
-	    if [ -d "$file" ]; then # symlink to folder
-		func "$name folder symlink"
-		link="<a href=\"${name}/index${EXTENSION}\">"
-		typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
-		namefield="${link}${name}</a>"
-	    else                    # symlink to file
-		func "$name file symlink"
-		link="<a href=\"${LINK_PREFIX}/${name}\">"
-		typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
-		namefield="${link}${name}</a>"
-	    fi
-	elif [ -d "$file" ]; then   # is a folder
-	    func "$name folder"
-	    link="<a href=\"${name}/index${EXTENSION}\">"
-	    typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/folder.png\" alt=\"folder\" ${icon_width}></a>"
-	    namefield="${link}${name}</a>"
-	else                        # is a file
-	    func "$name file"
-	    { test "$icon" = "" } && { icon="`filetype_icon ${file}`" }
-	    link="<a href=\"${LINK_PREFIX}/${name}\">"
-	    typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/${icon}\" alt=\"${icon}\" ${icon_width}></a>"
-	    namefield="${link}${name}</a>"
-	fi
+        if [ -L "$file" ]; then # is a symlink
+            if [ -d "$file" ]; then # symlink to folder
+                func "$name folder symlink"
+                link="<a href=\"${url}/${dir}/${name}/index${EXTENSION}\">"
+                typefield="${link}<img src=\"${url}/icons${THUMB_SIZE}/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
+                namefield="${link}${name}</a>"
+            else                    # symlink to file
+                func "$name file symlink"
+                link="<a href=\"${data}/${dir}/${name}\">"
+                typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
+                namefield="${link}${name}</a>"
+            fi
+        elif [ -d "$file" ]; then   # is a folder
+            func "$name folder"
+            link="<a href=\"${url}/${dir}/${name}/index${EXTENSION}\">"
+            typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/folder.png\" alt=\"folder\" ${icon_width}></a>"
+            namefield="${link}${name}</a>"
+        else                        # is a file
+            func "$name file"
+            { test "$icon" = "" } && { icon="`filetype_icon ${file}`" }
+            link="<a href=\"${data}/${dir}/${name}\">"
+            typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/${icon}\" alt=\"${icon}\" ${icon_width}></a>"
+            namefield="${link}${name}</a>"
+        fi
 
-	# render it all
-	cat <<EOF
+        # render it all
+        cat <<EOF
 <tr>
 <td style="vertical-align:middle;">${typefield}</td>
 <td style="vertical-align:middle;font-size:1.5em;word-wrap:break-word">${namefield}</td>
 </tr>
 EOF
-	tpwd="`pwd`"
-	{ test "$icon" = "" } && { continue }
-	popd
-	# copy the icon file
-	{ test -r ${destination}/icons${THUMB_SIZE}/${icon} } || {
-	    func "copy icon in place: $icon (PWD: `pwd`)"
-	    cp $SYS/icons/$THUMB_SIZE/${icon} \
-		${destination}/icons${THUMB_SIZE}/${icon}
-	}
-	pushd "$tpwd"
+        tpwd="`pwd`"
+        { test "$icon" = "" } && { continue }
+        popd
+        # copy the icon file
+        { test -r ${destination}/icons${THUMB_SIZE}/${icon} } || {
+            func "copy icon in place: $icon (PWD: `pwd`)"
+            cp $SYS/icons/$THUMB_SIZE/${icon} \
+                ${destination}/icons${THUMB_SIZE}/${icon}
+        }
+        pushd "$tpwd"
 
     done
     print "</table>"
-    
+
 }
 
 index_long_preview() {
-    func "index_long_preview \"$1\""
     dir="${1}"
+    func "index_long_preview \"$dir\""
+
     { test -d "$dir" } || { error "cannot index: not a directory '$dir'"; return 1 }
     files=()
     ttmp=`ls -l --time-style=long-iso "$dir" | awk '
@@ -288,22 +312,14 @@ index_long_preview() {
 { printf "files+=(\"%s;%s;%s\");", $8, $5, $6 }
 '`
     { test $? = 0 } || {
-	error "Error parsing directory: $dir"
-	return 1 }
+    error "Error parsing directory: $dir"
+    return 1 }
 
     eval "$ttmp"
 
     act "${#files} files parsed in $dir"
-    
-    dirbase="$1"
-    # setup paths for test
-    if [ "$CMD" = "test" ]; then
-	LINK_PREFIX="file://${dir}"
-    else
-	LINK_PREFIX="${urlsuffix}${dirbase}"
-    fi
-    func "LINK_PREFIX = $LINK_PREFIX"
-    
+
+
     # human size dividers
     _mb=$((1024 * 1024))
     _gb=$((1024 * 1024 * 1024))
@@ -319,73 +335,73 @@ index_long_preview() {
 </tr></thead>
 EOF
     for f in ${files}; do
-	name="${f[(ws:;:)1]}"
-	size="${f[(ws:;:)2]}"
-	date="${f[(ws:;:)3]}"
+    name="${f[(ws:;:)1]}"
+    size="${f[(ws:;:)2]}"
+    date="${f[(ws:;:)3]}"
 
-	ext="${name##*.}" # file extension
-	file="${1}/${name}" # file path
+    ext="${name##*.}" # file extension
+    file="${1}/${name}" # file path
 
-	# format size to human readable form
-	if [[ $size -lt 1024 ]]; then hsize="$size B"
-	elif [[ $size -gt 1024 ]]; then hsize="$(( $size / 1024 )) KB"
-	elif [[ $size -gt 1048576 ]]; then hsize="$(( $size / $mb )) MB"
-	else hsize="$(( $size / $gb )) GB"
-	fi
+    # format size to human readable form
+    if [[ $size -lt 1024 ]]; then hsize="$size B"
+    elif [[ $size -gt 1024 ]]; then hsize="$(( $size / 1024 )) KB"
+    elif [[ $size -gt 1048576 ]]; then hsize="$(( $size / $mb )) MB"
+    else hsize="$(( $size / $gb )) GB"
+    fi
 
-	# format date to human readable form
-	hdate=`date -d "$date" +'%d %b %Y'`
-	
-	func "$name \t $size \t $date"
+    # format date to human readable form
+    hdate=`date -d "$date" +'%d %b %Y'`
 
-	typefield=""
-	namefield=""
-	previewfield=""
-	link=""
-	icon=""
+    func "$name \t $size \t $date"
 
-	preview=`preview_file "$file"`
+    typefield=""
+    namefield=""
+    previewfield=""
+    link=""
+    icon=""
 
-	{ test "$preview" = "" } || {
-	    func "file preview produced"
-	    case $ext:l in
-		jpg|jpeg|png|gif|pdf|svg|eps)
-		    func "preview is a thumbnail"
-		    preview="<img src=\"$preview\" alt=\"$name\" title=\"$name\">"
-		    icon="image-x-generic.png"
-		;;
-	    esac
-	}
+    preview=`preview_file "$file"`
 
-	icon_width="width=\"50px\""
+    { test "$preview" = "" } || {
+        func "file preview produced"
+        case $ext:l in
+        jpg|jpeg|png|gif|pdf|svg|eps)
+            func "preview is a thumbnail"
+            preview="<img src=\"$preview\" alt=\"$name\" title=\"$name\">"
+            icon="image-x-generic.png"
+        ;;
+        esac
+    }
 
-	if [ -L "$file" ]; then # is a symlink
-	    if [ -d "$file" ]; then # symlink to folder
-		link="<a href=\"${name}/index${EXTENSION}\">"
-		typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
-		namefield="${link}${name}</a>"
-		previewfield="<!-- folder -->"
-	    else                    # symlink to file
-		link="<a href=\"${LINK_PREFIX}/${name}\">"
-		typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
-		namefield="${link}${name}</a>"
-		previewfield="${link}${preview}</a>"
-	    fi
-	elif [ -d "$file" ]; then   # is a folder
-	    link="<a href=\"${name}/index${EXTENSION}\">"
-	    typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/folder.png\" alt=\"folder\" ${icon_width}></a>"
-	    namefield="${link}${name}</a>"
-	    previewfield="<!-- folder -->"
-	else                        # is a file
-	    { test "$icon" = "" } && { icon="`filetype_icon ${file}`" }
-	    link="<a href=\"${LINK_PREFIX}/${name}\">"
-	    typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/${icon}\" alt=\"${icon}\" ${icon_width}></a>"
-	    namefield="${link}${name}</a>"
-	    previewfield="${link}${preview}</a>"
-	fi
+    icon_width="width=\"50px\""
 
-	# render it all
-	cat <<EOF
+    if [ -L "$file" ]; then # is a symlink
+        if [ -d "$file" ]; then # symlink to folder
+        link="<a href=\"${name}/index${EXTENSION}\">"
+        typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
+        namefield="${link}${name}</a>"
+        previewfield="<!-- folder -->"
+        else                    # symlink to file
+        link="<a href=\"${LINK_PREFIX}/${name}\">"
+        typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/symlink.png\" alt=\"symlink\" ${icon_width}></a>"
+        namefield="${link}${name}</a>"
+        previewfield="${link}${preview}</a>"
+        fi
+    elif [ -d "$file" ]; then   # is a folder
+        link="<a href=\"${name}/index${EXTENSION}\">"
+        typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/folder.png\" alt=\"folder\" ${icon_width}></a>"
+        namefield="${link}${name}</a>"
+        previewfield="<!-- folder -->"
+    else                        # is a file
+        { test "$icon" = "" } && { icon="`filetype_icon ${file}`" }
+        link="<a href=\"${LINK_PREFIX}/${name}\">"
+        typefield="${link}<img src=\"${WEB_ROOT}/icons${THUMB_SIZE}/${icon}\" alt=\"${icon}\" ${icon_width}></a>"
+        namefield="${link}${name}</a>"
+        previewfield="${link}${preview}</a>"
+    fi
+
+    # render it all
+    cat <<EOF
 <tr>
 <td style="vertical-align:middle;">${typefield}</td>
 <td style="vertical-align:middle;font-size:1.5em;word-wrap:break-word">${namefield}</td>
@@ -395,71 +411,73 @@ EOF
 </tr>
 EOF
 
-	tpwd="`pwd`"
-	{ test "$icon" = "" } && { continue }
-	popd
-	# copy the icon file
-	{ test -r ${destination}/icons${THUMB_SIZE}/${icon} } || {
-	    func "copy icon in place: $icon (PWD: `pwd`)"
-	    cp $SYS/icons/$THUMB_SIZE/${icon} \
-		${destination}/icons${THUMB_SIZE}/${icon}
-	}
-	pushd "$tpwd"
-	
+    tpwd="`pwd`"
+    { test "$icon" = "" } && { continue }
+    popd
+    # copy the icon file
+    { test -r ${destination}/icons${THUMB_SIZE}/${icon} } || {
+        func "copy icon in place: $icon (PWD: `pwd`)"
+        cp $SYS/icons/$THUMB_SIZE/${icon} \
+        ${destination}/icons${THUMB_SIZE}/${icon}
+    }
+    pushd "$tpwd"
+
     done
     print "</table>"
 }
 
+# preview_file() - takes a filename as arg
+#                  renders the file in a usable format (thumb if image, html if markdown, etc.)
+#                  returns the filename of the rendered result
 preview_file() {
     { test "$1" = "" } && { error "no file to preview."; return 1 }
     # get the file extension using zsh builtins
     # %% is for deleting prefix and ## is for deleting suffix
     for f in ${1}; do
-	filename="${f##*/}"
-	name="${filename%%.*}"
-	ext="${f##*.}"
+    filename="${f##*/}"
+    name="${filename%%.*}"
+    ext="${f##*.}"
 
-	# lowercase
-	case $ext:l in
-	    md) # markdown
-		notice "$f: rendering markdown using maruku"
-		output="$name".html
-		maruku --html --html-frag $f -o "$output"
-		print "$output"
-		;;
-	    jpg|jpeg|png)
-		output="${name}-thumb.${ext}"
-		{ test -r "$output" } && {
-		    act "$f: thumbnail found, skip rendering"
-		    print "$output"
-		    continue }
-		notice "$f: rendering thumbnail using ImageMagick"
-		convert $f -resize 100 $output
-		print "$output"
-		;;
-	    pdf|gif) # only first page / animation frame
-		output="${name}-thumb.jpg"
-		{ test -r "$output" } && {
-		    act "$f: thumbnail found, skip rendering"
-		    print "$output"
-		    continue }
-		notice "$f: rendering thumbnail using ImageMagick"
-		convert "${f}[0]" -resize 100 $output
-		print "$output"
-		;;
-	    svg|eps)
-		output="${name}-thumb.jpg"
-		{ test -r "$output" } && {
-		    act "$f: thumbnail found, skip rendering"
-		    print "$output"
-		    continue }
-		notice "$f: rendering thumbnail using ImageMagick"
-		convert -density 144 "${f}" -resize 100 $output
-		print "$output"
-		;;
+    # lowercase
+    case $ext:l in
+        md) # markdown
+        notice "$f: rendering markdown using maruku"
+        output="$name".html
+        maruku --html --html-frag $f -o "$output"
+        print "$output"
+        ;;
+        jpg|jpeg|png)
+        output="${name}-thumb.${ext}"
+        { test -r "$output" } && {
+            act "$f: thumbnail found, skip rendering"
+            print "$output"
+            continue }
+        notice "$f: rendering thumbnail using ImageMagick"
+        convert $f -resize 100 $output
+        print "$output"
+        ;;
+        pdf|gif) # only first page / animation frame
+        output="${name}-thumb.jpg"
+        { test -r "$output" } && {
+            act "$f: thumbnail found, skip rendering"
+            print "$output"
+            continue }
+        notice "$f: rendering thumbnail using ImageMagick"
+        convert "${f}[0]" -resize 100 $output
+        print "$output"
+        ;;
+        svg|eps)
+        output="${name}-thumb.jpg"
+        { test -r "$output" } && {
+            act "$f: thumbnail found, skip rendering"
+            print "$output"
+            continue }
+        notice "$f: rendering thumbnail using ImageMagick"
+        convert -density 144 "${f}" -resize 100 $output
+        print "$output"
+        ;;
 
-	esac
+    esac
     done
     return 0
 }
-
