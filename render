@@ -109,7 +109,7 @@ render_header() {
 <!-- Bootstrap -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link href="${baseurl}/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="${baseurl}/css/bootstrap-responsive.min.css" rel="stylesheet" />
+    <link href="${baseurl}/css/bootstrap-responsive.css" rel="stylesheet" />
 EOF
 
     { test -r "$DIR"/views/css/custom.css } && {
@@ -276,7 +276,9 @@ render_html() {
 
 # extra js for html pages
     [[ "$FLOWTYPE" = "" ]] || {
-	includejs+=(flowtype.js) }
+	includejs+=(jquery.min.js)
+	includejs+=(flowtype.js)
+ }
 
 # clean up from temporary files
     rm -f tmp.*
@@ -336,11 +338,11 @@ calc_dest() {
 mkdir -p "$destination/css"
 mkdir -p "$destination/js"
 
-{ test -r "$destination"/css/bootstrap.css } || {
+#{ test -r "$destination"/css/bootstrap.css } || {
     cp "$SYS"/css/bootstrap.css            "$destination"/css/
-    cp "$SYS"/css/bootstrap.min.css        "$destination"/css/
+    cp views/css/bootstrap.min.css        "$destination"/css/
     cp "$SYS"/css/bootstrap-responsive.css "$destination"/css/
-}
+#}
 cp "$SYS"/js/bootstrap.min.js          "$destination"/js/
 cp "$SYS"/js/html5.js                 "$destination"/js/
 
