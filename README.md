@@ -117,7 +117,7 @@ apache alias. To configure this use `FILES_ROOT` in config.zsh.
 
 Bleeding edge is on GitHub. see https://github.com/dyne/webnomad
 
-Pull requests may be welcome.
+Pull requests and translations of this documentation are welcome.
 
 Come on IRC channel #dyne via https://irc.dyne.org to get in touch.
 

@@ -303,16 +303,19 @@ EOF
 index_long_preview() {
     dir="${1}"
     func "index_long_preview \"$dir\""
+    func "index data: $archive/$dir"
+    func "index url: $url / $dir"
 
-    { test -d "$dir" } || { error "cannot index: not a directory '$dir'"; return 1 }
+    { test -d "$archive/$dir" } || { error "cannot index: not a directory '$archive/$dir'"; return 1 }
+
     files=()
-    ttmp=`ls -l --time-style=long-iso "$dir" | awk '
+    ttmp=`ls -l --time-style=long-iso "${archive}/${dir}" | awk '
 /^total/ { next }
 /^$/ { next }
 { printf "files+=(\"%s;%s;%s\");", $8, $5, $6 }
 '`
     { test $? = 0 } || {
-    error "Error parsing directory: $dir"
+    error "Error parsing directory: ${archive}/${dir}"
     return 1 }
 
     eval "$ttmp"
@@ -334,6 +337,24 @@ index_long_preview() {
 <th class="col-sm-3 col-md-4 col-lg-5">Preview</th>
 </tr></thead>
 EOF
+
+
+    # if not parent offer to go up
+    [[ "$dir" = "" ]] || {
+        func "parent: $parent"
+        cat <<EOF
+<tr>
+<td style="vertical-align:middle;">
+<a href="${parent}/index${EXTENSION}">
+<img src="${WEB_ROOT}/icons${THUMB_SIZE}/go-up.png"
+ alt="parent directory" title="go to parent"></a></td>
+<td style="vertical-align:middle;font-size:1.5em;word-wrap:break-word" colspan="4">
+<a href="${parent}/index${EXTENSION}">
+.. [ parent ]</a></td>
+</tr>
+EOF
+    }
+
     for f in ${files}; do
     name="${f[(ws:;:)1]}"
     size="${f[(ws:;:)2]}"

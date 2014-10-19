@@ -5,9 +5,9 @@ STYLING=0
 # make it work to browse results on file://
 baseurl="file://`pwd`/test/"
 
-includejs+=(jquery.min.js jquery.sidr.js)
+# includejs+=(jquery.min.js jquery.sidr.js)
 
-includecss+=(jquery.sidr.dark.css)
+# includecss+=(jquery.sidr.dark.css)
 
 { test "$STYLING" = "1" } || { render_test_footer() { return 0 }; return 0 }
     
