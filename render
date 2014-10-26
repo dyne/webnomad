@@ -337,9 +337,11 @@ calc_dest() {
 # copy core bootstrap files in place
 mkdir -p "$destination/css"
 mkdir -p "$destination/js"
+mkdir -p "$destination/img"
 
 #{ test -r "$destination"/css/bootstrap.css } || {
     cp "$SYS"/css/bootstrap.css            "$destination"/css/
+    cp "$SYS"/img/*                        "$destination"/img/
     cp views/css/bootstrap.min.css        "$destination"/css/
     cp "$SYS"/css/bootstrap-responsive.css "$destination"/css/
 #}
