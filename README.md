@@ -79,9 +79,9 @@ the format you want them to appear in the slideshow. One can also use
 `webnomad/convert` an optional script that helps to do batch
 conversions.
 
-Now fill in the filenames of your images inside the `.gallery` file, one
+Now fill in the filenames of your images inside the `.gal` file, one
 per line, relative to the `views/` path. For instance our
-views/vacation_in_Italy.gallery file can contain:
+views/vacation_in_Italy.gal file can contain:
 
     vacation_in_Italy-files/Fontana_di_Trevi.jpeg
     vacation_in_Italy-files/Torre_di_Pisa.jpeg
