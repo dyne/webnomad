@@ -60,7 +60,7 @@ for i in $images; do
     convert $i ${@} $dst/$destfile_sane
     if [ $? = 0 ]; then
 	results+=($dst/$destfile_sane)
-	print " done"
+	[[ $QUIET = 1 ]] || print " done"
     else print " error!"; fi
 
     # clean from exif info

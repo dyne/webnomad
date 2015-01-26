@@ -357,7 +357,7 @@ source $SYS/fonts
 act -n "Clean up all temp files ... "
 temps=(`find "$destination" -type f -name 'temp-*'`)
 for t in $temps; do rm -f $t; done
-print "done"
+[[ $QUIET = 1 ]] || print "done"
 
 # publish all .txt files as-is
 # useful for robots.txt
@@ -433,7 +433,7 @@ if [[ "${#gals}" > 0 ]]; then
 	dst=`calc_dest "$src"`
 	act -n "Gallery rendering: $B $dst $r ... "
 	cat $src | render_gallery > $dst
-	print "done"
+	[[ $QUIET = 1 ]] || print "done"
     done
 
 fi
@@ -472,7 +472,7 @@ rsync -a -W --ignore-existing "$DIR/views/" "${destination}/"
 # make sure that new css styles are updates
 { test -r "$DIR/views/css/custom.css" } && {
     cp -f "$DIR/views/css/custom.css" "${destination}/css/" }
-print "done"
+[[ $QUIET = 1 ]] || print "done"
 
 # if the whole website is a "slideshow" (set in config.zsh) then we start with
 # a full screen slideshow of all uploaded photos, cycling random every time.
