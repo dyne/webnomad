@@ -236,8 +236,8 @@ render_html() {
     # (a line starting with tmp.md$RAND)
     tmp="tmp.$RANDOM"
     awk 'BEGIN { srand(); markdown=0; }
-/^<markdown>/ { markdown=1; out="tmp.md" rand(); print out; next }
-/^<\/markdown>/ { markdown=0; next }
+/<markdown>/ { markdown=1; out="tmp.md" rand(); print out; next }
+/<\/markdown>/ { markdown=0; next }
 { if(markdown==1) { print $0 >out; next } else { print $0 } }
 ' > $tmp
     
