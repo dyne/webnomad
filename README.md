@@ -3,7 +3,7 @@
     .--.--.--.-----|  |--.-----.-----.--------.---.-.--|  |
     |  |  |  |  -__|  _  |     |  _  |        |  _  |  _  |
     |________|_____|_____|__|__|_____|__|__|__|___._|_____|
-          A slick and static website publisher       v 0.5
+          A slick and static website publisher       v 0.3
 
 http://www.dyne.org/software/webnomad
 
@@ -129,7 +129,7 @@ https://www.dyne.org/donate
 
 ## LICENSE
 
-WebNomad is Copyright (C) 2012-2014 Denis Roio <jaromil@dyne.org>
+WebNomad is Copyright (C) 2012-2015 Denis Roio <jaromil@dyne.org>
 
     This program is free software: you can redistribute it and/or
     modify it under the terms of the GNU Affero General Public License

@@ -1,3 +1,10 @@
+0.3 - 30 March 2015
+
+    Several bugfixes and enhancements. Added support for recursive
+    indexing of directory structures, integration with Jaro Mail for
+    public maildir archiving, Spanish translation of documentation,
+    render test function for local preview.
+
 0.2 - 2 September 2013
 
 	Refactoring based on bootstrap-2 and bootswatch themes plus

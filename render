@@ -2,7 +2,7 @@
 #
 # WebNomad, your slick and static website publisher
 #
-# Copyright (C) 2012-2014 Denis Roio <jaromil@dyne.org>
+# Copyright (C) 2012-2015 Denis Roio <jaromil@dyne.org>
 #
 # This source  code is free  software; you can redistribute  it and/or
 # modify it under the terms of  the GNU Public License as published by
@@ -18,7 +18,7 @@
 # this source code; if not, write to:
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-VERSION=0.5
+VERSION=0.3
 
 QUIET=0
 
@@ -112,28 +112,28 @@ render_header() {
     <link href="${baseurl}/css/bootstrap-responsive.css" rel="stylesheet" />
 EOF
 
-    { test -r "$DIR"/views/css/custom.css } && {
-	cat <<EOF
+    [[ -r "$DIR"/views/css/custom.css ]] && {
+	    cat <<EOF
     <link href="${baseurl}/css/custom.css" rel="stylesheet" />
 EOF
     }
 
     # add css needed for internal functions
     for c in $includecss; do
-	cat <<EOF
+	    cat <<EOF
     <link href="${baseurl}/css/${c}" rel="stylesheet" />
 EOF
-	cp "$SYS"/css/${c} "${destination}"/css/
+	    cp "$SYS"/css/${c} "${destination}"/css/
     done
 
-    { test -f "${destination}"/css/custom.fonts.css } && {
-	cat <<EOF
+    [[ -f "${destination}"/css/custom.fonts.css ]] && {
+	    cat <<EOF
     <link href="${baseurl}/css/custom.fonts.css" rel="stylesheet" />
 EOF
     }
 
     # add any argument string to header
-    { test "$1" = "" } || { print "${@}"; print }
+    [[ "$1" = "" ]] || { print "${@}"; print }
 
     # add the user configured header
     render_file "$DIR"/tmpl/header.html
@@ -342,7 +342,7 @@ mkdir -p "$destination/img"
 #{ test -r "$destination"/css/bootstrap.css } || {
     cp "$SYS"/css/bootstrap.css            "$destination"/css/
     cp "$SYS"/img/*                        "$destination"/img/
-    cp views/css/bootstrap.min.css        "$destination"/css/
+    cp "$SYS"/css/bootstrap.min.css        "$destination"/css/
     cp "$SYS"/css/bootstrap-responsive.css "$destination"/css/
 #}
 cp "$SYS"/js/bootstrap.min.js          "$destination"/js/
