@@ -3,7 +3,7 @@
     .--.--.--.-----|  |--.-----.-----.--------.---.-.--|  |
     |  |  |  |  -__|  _  |     |  _  |        |  _  |  _  |
     |________|_____|_____|__|__|_____|__|__|__|___._|_____|
-          A slick and static website publisher       v 0.3
+          A slick and static website publisher       v 0.4
 
 http://www.dyne.org/software/webnomad
 
@@ -20,8 +20,7 @@ files found into a directory.
 
 ## USE INSTRUCTIONS 
 
-As of now, webnomad is operated from a Terminal.  A simple interface
-might be built in future if donors request it.
+Webnomad is operated from the console terminal.
 
 ## BASIC USAGE
 
@@ -42,14 +41,15 @@ Now go customise files in `tmpl/` with your favorite HTML editor and
 then go as well in `views/` to create your web pages, better start from
 index.html.
 
-To see results, run `./webnomad/render` and your webpages will be in
-pub/ with all markdown rendered, header navbar and footer applied. To
-preview open the `pub/index` file with a web browser (chromium is
-recommended, since it does not need the .html extension on local
-files...)
+To preview all changes, start `./webnomad/preview`: this will launch a
+firefox browser on the locally rendered `test/index.html` and will
+refresh it every time a file is modified in views/ or tmpl/. A
+different browser than firefox can be specified as an argument, for
+instance `./webnomad/preview chromium`.
 
-Upload your website with a recursive Scp or Rsync from `pub/*` on any
-webserver.
+To upload results, run `./webnomad/render` and your webpage will be in
+the `pub/` directory ready for upload with a recursive Scp or Rsync
+on any webserver, for instance `rsync -PraX pub/* dyne.org:public_html`.
 
 ## USE MARKDOWN
 
@@ -96,7 +96,7 @@ page in `pub/` which in our case is pub/vacation_in_Italy.
 
 Using webnomad One can also create static web pages indexing all files
 into any filesystem directories recursively, making thumbnail previews
-of images and linking to the originals.
+of images and linking to the originals. This feature is **experimental**.
 
 In order to do so create a file in views with extension `.idx` or
 `.index`, then fill it in with the needed configurations, for instance a
