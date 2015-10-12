@@ -41,11 +41,16 @@ Now go customise files in `tmpl/` with your favorite HTML editor and
 then go as well in `views/` to create your web pages, better start from
 index.html.
 
+## LIVE PREVIEW ON SAVE
+
 To preview all changes, start `./webnomad/preview`: this will launch a
 firefox browser on the locally rendered `test/index.html` and will
-refresh it every time a file is modified in views/ or tmpl/. A
-different browser than firefox can be specified as an argument, for
+refresh it every time a file is modified in views/ or tmpl/.
+
+A different browser than firefox can be specified as an argument, for
 instance `./webnomad/preview chromium`.
+
+## RENDER FINAL RESULT
 
 To upload results, run `./webnomad/render` and your webpage will be in
 the `pub/` directory ready for upload with a recursive Scp or Rsync

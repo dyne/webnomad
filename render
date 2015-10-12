@@ -39,7 +39,7 @@ arrs+=(custom_fonts)
 source $SYS/zuper.init
 
 
-VERSION=0.5
+VERSION=0.4
 
 # fill path to the source website root
 DIR="`pwd`"

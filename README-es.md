@@ -3,7 +3,7 @@
     .--.--.--.-----|  |--.-----.-----.--------.---.-.--|  |
     |  |  |  |  -__|  _  |     |  _  |        |  _  |  _  |
     |________|_____|_____|__|__|_____|__|__|__|___._|_____|
-      Un astuto publicador de sitios web estáticos   v 0.3
+              Un astuto publicador de sitios web estáticos
 
 http://dyne.org/software/webnomad
 
