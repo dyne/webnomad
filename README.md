@@ -3,7 +3,7 @@
     .--.--.--.-----|  |--.-----.-----.--------.---.-.--|  |
     |  |  |  |  -__|  _  |     |  _  |        |  _  |  _  |
     |________|_____|_____|__|__|_____|__|__|__|___._|_____|
-          A slick and static website publisher       v 0.4
+                      A slick and static website publisher
 
 http://www.dyne.org/software/webnomad
 

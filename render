@@ -18,49 +18,44 @@
 # this source code; if not, write to:
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-VERSION=0.3
 
-QUIET=0
 
 # full path to webnomad's system
+
 SYS="`pwd`/webnomad"
-source $SYS/utils
+
+source $SYS/zuper
+
+vars+=(SYS DIR CMD dst)
+
+vars+=(TITLE DESCRIPTION KEYWORDS TYPE IMAGE EXTENSION)
+vars+=(WEB_ROOT FILES_ROOT THUMB_SIZE BOOTSTRAP destination)
+vars+=(FLOWTYPE FONT_RATIO EXIF_CLEAN EXIF_COMMENT EXIF_ROTATE)
+vars+=(total_fonts cssfound)
+
+arrs+=(includecss includejs fonts)
+arrs+=(custom_fonts)
+
+source $SYS/zuper.init
+
+
+VERSION=0.5
 
 # fill path to the source website root
 DIR="`pwd`"
 
 CMD="$1"
 
-{ test -r config.zsh } || {
+[[ -r config.zsh ]] || {
     error "Directory not configured for WebNomad. First use /webnomad/init"
-    exit 1 }
-
-
-####################################
-# Base configuration
-
-
-# web root for all urls
-WEB_ROOT=""
-
-# prefix to all indexed files
-# this can be a full path on the filesystem
-FILES_ROOT=""
-
-# thumbnail size
-THUMB_SIZE=256
-
-# font ratio
-FONT_RATIO=30
+    return 1 }
 
 source config.zsh
+
+# thumbnail size
+THUMB_SIZE=${THUMB_SIZE:-256}
+
 ####################################
-
-typeset -h dst
-
-typeset -alU includecss # array of css files to include
-typeset -alU includejs # array of js files to include
-typeset -alU fonts # array of available fonts
 
 # string match case insensitive
 unsetopt CASE_GLOB
@@ -88,6 +83,11 @@ act "WEB_ROOT = $WEB_ROOT"
 render_file() { sed -e "s@\${baseurl}@${baseurl}@g" $@ }
 
 render_header() {
+    if [[ "$IMAGE" =~ "http://" ]] ; then
+        _image=$IMAGE
+    else
+        _image=$WEB_ROOT/$IMAGE
+    fi
     cat <<EOF
 <!DOCTYPE html>
 <html>
@@ -99,7 +99,10 @@ render_header() {
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="Generator" content="WebNomad $VERSION - http://dyne.org/software/webnomad" />
     <meta name="MSSmartTagsPreventParsing" content="True" />
+EOF
 
+    [[ $BOOTSTRAP = 1 ]] && {
+        cat <<EOF
 <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements
      http://html5shim.googlecode.com/svn/trunk/html5.js -->
 <!--[if lt IE 9]>
@@ -110,11 +113,39 @@ render_header() {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link href="${baseurl}/css/bootstrap.min.css" rel="stylesheet" />
     <link href="${baseurl}/css/bootstrap-responsive.css" rel="stylesheet" />
+
+EOF
+    }
+
+    cat <<EOF
+<!-- Open Graph for social networks -->
+    <meta property="og:title" content="$TITLE" />
+    <meta property="og:description" content="$DESCRIPTION" />
+    <meta property="og:type" content="$TYPE" />
+
+EOF
+    [[ "$WEB_ROOT" = "" ]] || {
+        cat <<EOF
+    <meta property="og:url" content="$WEB_ROOT" />
+EOF
+    }
+    cat <<EOF
+    <meta property="og:image" content="$_image" />
 EOF
 
+    [[ "$TWITTER" = "" ]] || {
+        cat <<EOF
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="$TWITTER">
+    <meta name="twitter:title" content="$TITLE">
+    <meta name="twitter:description" content="$DESCRIPTION">
+    <meta name="twitter:image" content="$_image">
 
+EOF
+    }
     # include all css files found in views/css
-    cssfound=`find $DIR/views/css -name '*.css'`
+    cssfound=`find $DIR/views/css -iname '*.css'`
+
     for c in ${(f)cssfound}; do
         includecss+=(${c##*/})
     done
@@ -122,17 +153,18 @@ EOF
 
     # include also generated css for fonts if present
     [[ -f "${destination}"/css/custom.fonts.css ]] && includecss+=(custom.fonts.css)
-    
-    
+
+
     # add all css needed
     for c in $includecss; do
         act "+ css: $c"
         func "<link href=\"${baseurl}/css/${c}\" rel=\"stylesheet\" />"
 
-	    cat <<EOF
+        cat <<EOF
     <link href="${baseurl}/css/${c}" rel="stylesheet" />
+
 EOF
-	    if [[ -r "$DIR"/views/css/$c ]]; then
+        if [[ -r "$DIR"/views/css/$c ]]; then
             cp -a $DIR/views/css/$c "${destination}"/css/
         elif [[ -r "$SYS"/css/${c} ]]; then
             cp -a "$SYS"/css/${c} "${destination}"/css/
@@ -140,11 +172,9 @@ EOF
 
     done
 
-    # add any argument string to header
-    [[ "$1" = "" ]] || { print "${@}"; print }
-
     # add the user configured header
     render_file "$DIR"/tmpl/header.html
+
 
 }
 
@@ -167,16 +197,16 @@ EOF
     # insert and copy all js files
     for j in $includejs; do
         act "+ js:  $j"
-	    cat <<EOF
+        cat <<EOF
 <script type="text/javascript" src="${baseurl}/js/$j"></script>
 EOF
-	    if [[ -r "$DIR"/views/js/$j ]]; then
+        if [[ -r "$DIR"/views/js/$j ]]; then
             cp -a "$DIR"/views/js/$j "$destination"/js
-	    elif [[ -r "$SYS"/js/$i ]]; then
-	        cp -a "$SYS"/js/$i "$destination"/js
+        elif [[ -r "$SYS"/js/$i ]]; then
+            cp -a "$SYS"/js/$i "$destination"/js
         fi
     done
-    
+
     # if test mode then render the test footer
     [[ "$CMD" = "test" ]] && render_test_footer
 
@@ -238,7 +268,7 @@ EOF
 EOF
     }
 
-cat <<EOF
+    cat <<EOF
   </body>
 </html>
 EOF
@@ -258,47 +288,47 @@ render_html() {
 /<\/markdown>/ { markdown=0; next }
 { if(markdown==1) { print $0 >out; next } else { print $0 } }
 ' > $tmp
-    
-    # first pass marks the markdown parts and saves them separate    
+
+    # first pass marks the markdown parts and saves them separate
     mds=(`find . -name 'tmp.md*'`)
     { test "${#mds}" = "0" } || {
-	# second pass substituted saved parts with rendered markdown
-	act -n "${#mds} markdown fields "
-	
-	# check which markdown parser is available in PATH
+        # second pass substituted saved parts with rendered markdown
+        act -n "${#mds} markdown fields "
+
+        # check which markdown parser is available in PATH
         command -v pandoc > /dev/null
         if [ "$?" = "0" ]; then parser="pandoc -f markdown_github -t html5"
         else command -v maruku > /dev/null
-	  if [ "$?" = "0" ]; then parser="maruku --html-frag"
-	  else command -v markdown > /dev/null;
-	    if [ "$?" = "0" ]; then parser=markdown
-	    else command -v multimarkdown > /dev/null
-              if [ "$?" = "0"]; then parser=multimarkdown
-              fi
-	    fi
-          fi
-	fi
+             if [ "$?" = "0" ]; then parser="maruku --html-frag"
+             else command -v markdown > /dev/null;
+                  if [ "$?" = "0" ]; then parser=markdown
+                  else command -v multimarkdown > /dev/null
+                       if [ "$?" = "0"]; then parser=multimarkdown
+                       fi
+                  fi
+             fi
+        fi
 
-	# parses all html and renders each markdown in the html
-	for i in $mds; do
-	    md=`basename $i`
-	    newtemp="tmp.$RANDOM"
-	    cat $tmp | awk '
+        # parses all html and renders each markdown in the html
+        for i in $mds; do
+            md=`basename $i`
+            newtemp="tmp.$RANDOM"
+            cat $tmp | awk '
 /^'"$md"'/ { system("cat '"$md"' | '"$parser"'"); next }
 { print $0; }' > $newtemp
-	    rm $tmp; tmp=$newtemp
-	done
+            rm $tmp; tmp=$newtemp
+        done
     }
 
     cat $tmp
 
     # extra js for html pages
     [[ "$FLOWTYPE" = "" ]] || {
-	    includejs+=(jquery.min.js)
-	    includejs+=(flowtype.js)
+        includejs+=(jquery.min.js)
+        includejs+=(flowtype.js)
     }
 
-# clean up from temporary files
+    # clean up from temporary files
     rm -f tmp.*
 
 
@@ -317,54 +347,61 @@ read_meta() {
 # calculate the destination path for a file or folder to render from views
 calc_dest() {
     { test -r "$1" } || {
-	    error "error calculating destination: cannot read $1"
-	    return 0 }
+        error "error calculating destination: cannot read $1"
+        return 0 }
     # optional 2nd arg: extension
     ext="$2"
     { test "$ext" = "" } && { ext="$EXTENSION" }
-    
+
     func "calc_dest \"$1\" \"$2\""
-    
+
     dstfile=${1##*/}
     dstfile=${dstfile%.*}${ext}
     func "destination file: $dstfile"
     dstdir=${1##*views/}
     dstdir=${dstdir%/*}
     func "destination subdir: $dstdir"
-    
+
     # compute destination file
     if [ "${dstfile%.*}" = "${dstdir%.*}" ]; then
-	    # no subdirs, root level
-	    dst="${destination}/${dstfile}"
+        # no subdirs, root level
+        dst="${destination}/${dstfile}"
     else
-	    dst="${destination}/${dstdir}/${dstfile}"
-	    mkdir -p ${destination}/${dstdir}
+        dst="${destination}/${dstdir}/${dstfile}"
+        mkdir -p ${destination}/${dstdir}
     fi
     func "calculated destination: $dst"
     print $dst
 }
 
-#########    
+#########
 # MAIN
+func MAIN
 
 { test "$1" = "source" } && { return 0 }
-{ test "$1" = "test" } && { 
+{ test "$1" = "test" } && {
     act "Local test rendering inside test/"
     source $SYS/test }
 
-# copy core bootstrap files in place
+# render the base skeleton dir tree
 mkdir -p "$destination/css"
 mkdir -p "$destination/js"
 mkdir -p "$destination/img"
 
-#{ test -r "$destination"/css/bootstrap.css } || {
+[[ $BOOTSTRAP = 1 ]] && {
+    #{ test -r "$destination"/css/bootstrap.css } || {
     cp "$SYS"/css/bootstrap.css            "$destination"/css/
     cp "$SYS"/img/*                        "$destination"/img/
     cp "$SYS"/css/bootstrap.min.css        "$destination"/css/
     cp "$SYS"/css/bootstrap-responsive.css "$destination"/css/
-#}
-cp "$SYS"/js/bootstrap.min.js          "$destination"/js/
-cp "$SYS"/js/html5.js                 "$destination"/js/
+    #}
+    cp "$SYS"/js/bootstrap.min.js          "$destination"/js/
+    cp "$SYS"/js/html5.js                 "$destination"/js/
+}
+
+
+
+
 
 
 
@@ -414,22 +451,25 @@ EOF
     # don't forget the navbar
     render_file "$DIR"/tmpl/navbar.html >> $dst
 
-    cat <<EOF >> $dst
+    [[ $BOOTSTRAP = 1 ]] && {
+        cat <<EOF >> $dst
 <p>&nbsp;</p>
 <div class="container-fluid">
 <article>
 EOF
+    }
 
     cat $src | render_html >> $dst
 
-cat <<EOF >> $dst
+    [[ $BOOTSTRAP = 1 ]] && {
+        cat <<EOF >> $dst
 </article>
 <p>&nbsp;</p>
 <p>&nbsp;</p>
 
 EOF
+    }
 
-#    includejs=(js/bootstrap.min.js)
     render_footer >> $dst
 
     act "done"
@@ -448,11 +488,11 @@ if [[ "${#gals}" > 0 ]]; then
     cp "$SYS"/js/jquery.min.js "$destination"/js/
 
     for src in $gals; do
-	cat ${src} | read_meta
-	dst=`calc_dest "$src"`
-	act -n "Gallery rendering: $B $dst $r ... "
-	cat $src | render_gallery > $dst
-	[[ $QUIET = 1 ]] || print "done"
+        cat ${src} | read_meta
+        dst=`calc_dest "$src"`
+        act -n "Gallery rendering: $B $dst $r ... "
+        cat $src | render_gallery > $dst
+        [[ $QUIET = 1 ]] || print "done"
     done
 
 fi
@@ -465,32 +505,59 @@ idxs+=(`find views -type f -name '*.index'`)
     # loop through all .idx files
     for idx in $idxs; do
         # destination dir is named after the .idx file
-	    dst=`calc_dest "$idx"`
-	    # strip extension: an index builds a dir structure
-	    dst="${dst%.*}"
-	    notice "Directory index rendering to: $dst"
+        dst=`calc_dest "$idx"`
+        # strip extension: an index builds a dir structure
+        dst="${dst%.*}"
+        notice "Directory index rendering to: $dst"
         # loop through all contents of the idx:
         # one directory to index recursively on each line
-	    dirs=`cat ${idx}`
-	    for d in ${(f)dirs}; do
-	        mkdir -p "${dst}"
-	        pushd "${dst}"
+        dirs=`cat ${idx}`
+        for d in ${(f)dirs}; do
+            mkdir -p "${dst}"
+            pushd "${dst}"
             # recursion wrap:    $1=archive   $2=diralias     $3=indextype
-	        recursive_index "${d[(ws: :)1]}" "${d[(ws: :)2]}" "${d[(ws: :)3]}"
+            recursive_index "${d[(ws: :)1]}" "${d[(ws: :)2]}" "${d[(ws: :)3]}"
             # archive: full path where the files to be indexed are found
             # diralias: index directory appended to url
             # indextype: type of index (short | long)
-	        popd
-	    done
+            popd
+        done
     done
 }
 
 # copy to destination all subdirs in views/
 act -n "publishing all $B views $r ... "
 rsync -a -W --ignore-existing "$DIR/views/" "${destination}/"
-# make sure that new css styles are updates
-{ test -r "$DIR/views/css/custom.css" } && {
+# make sure that new css styles are updated
+[[ -r "$DIR/views/css/custom.css" ]] && {
     cp -f "$DIR/views/css/custom.css" "${destination}/css/" }
+
+# Here all files are copied inside the destination
+# we can run special operations on file-types and overwrite them now
+# for instance edit EXIF information on images etc.
+
+# clean up jpegs if jhead is installed
+command -v jhead && {
+    jpegs=`find "$destination" -iname "*.jpg"`
+    [[ $EXIF_CLEAN = 1 ]] && {
+        for j in ${(f)jpegs}; do
+            jhead -purejpg $j
+        done
+    }
+
+    [[ "$EXIF_COMMENT" != "" ]] && {
+        for j in ${(f)jpegs}; do
+            jhead -cl "$EXIF_COMMENT" $j
+        done
+    }
+    [[ $EXIF_ROTATE = 1 ]] && {
+        for j in ${(f)jpegs}; do
+            jhead -autorot $j
+        done
+
+    }
+}
+
 [[ $QUIET = 1 ]] || print "done"
 
 # if the whole website is a "slideshow" (set in config.zsh) then we start with
@@ -501,9 +568,8 @@ rsync -a -W --ignore-existing "$DIR/views/" "${destination}/"
     # generate a list of all images (removing duplicates)
     act "Indexing all images ... "
     find pub -iname '*.jpg' | sed -e 's/^pub\///g' -e 's/^.\/pub\///g' -e "s@'@@g" | sort | uniq \
-	| render_gallery views/index.html > ${destination}/index
+        | render_gallery views/index.html > ${destination}/index
 }
 
 
 notice "Website refreshed."
-

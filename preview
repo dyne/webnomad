@@ -21,7 +21,12 @@
 # full path to webnomad's system
 R="`pwd`"
 SYS="$R/webnomad"
-source $SYS/utils
+source $SYS/zuper
+vars=(BROWSER TIME_FORMAT OUTPUT_FORMAT SYS)
+vars=(views BROWSER_WINDOW_ID)
+source $SYS/zuper.init
+
+source $R/config.zsh
 
 BROWSER=${1:-firefox}
 TIME_FORMAT='%F %H:%M'
@@ -31,6 +36,7 @@ $SYS/render test
 $BROWSER $R/test/index.html &
 
 views="
+$R/test
 $R/views
 $R/tmpl
 $R/config.zsh

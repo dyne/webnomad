@@ -26,7 +26,8 @@ CMD=`basename $0`
     return 1
 }
 
-source ${DIR}/utils
+source ${DIR}/zuper
+source ${DIR}/zuper.init
 
 DEBUG=1
 
