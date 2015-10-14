@@ -93,8 +93,8 @@ TWITTER="@DyneOrg"
 # Anything below is safe to leave untouched
 #
 
-# Comment to disable Bootstrap
-BOOTSTRAP=1
+# Uncomment to disable Bootstrap
+# BOOTSTRAP=0
 
 # What file extension to use for html files
 EXTENSION=".html"

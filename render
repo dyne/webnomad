@@ -101,7 +101,7 @@ render_header() {
     <meta name="MSSmartTagsPreventParsing" content="True" />
 EOF
 
-    [[ $BOOTSTRAP = 1 ]] && {
+    [[ $BOOTSTRAP = 0 ]] && {
         cat <<EOF
 <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements
      http://html5shim.googlecode.com/svn/trunk/html5.js -->
@@ -395,7 +395,7 @@ mkdir -p "$destination/css"
 mkdir -p "$destination/js"
 mkdir -p "$destination/img"
 
-[[ $BOOTSTRAP = 1 ]] && {
+[[ $BOOTSTRAP = 0 ]] || {
     #{ test -r "$destination"/css/bootstrap.css } || {
     cp "$SYS"/css/bootstrap.css            "$destination"/css/
     cp "$SYS"/img/*                        "$destination"/img/
@@ -458,7 +458,7 @@ EOF
     # don't forget the navbar
     render_file "$DIR"/tmpl/navbar.html >> $dst
 
-    [[ $BOOTSTRAP = 1 ]] && {
+    [[ $BOOTSTRAP = 0 ]] || {
         cat <<EOF >> $dst
 <p>&nbsp;</p>
 <div class="container-fluid">
@@ -468,7 +468,7 @@ EOF
 
     cat $src | render_html >> $dst
 
-    [[ $BOOTSTRAP = 1 ]] && {
+    [[ $BOOTSTRAP = 0 ]] || {
         cat <<EOF >> $dst
 </article>
 <p>&nbsp;</p>
