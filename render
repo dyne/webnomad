@@ -101,7 +101,7 @@ render_header() {
     <meta name="MSSmartTagsPreventParsing" content="True" />
 EOF
 
-    [[ $BOOTSTRAP = 0 ]] && {
+    [[ $BOOTSTRAP = 0 ]] || {
         cat <<EOF
 <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements
      http://html5shim.googlecode.com/svn/trunk/html5.js -->
@@ -346,7 +346,7 @@ read_meta() {
 
 # calculate the destination path for a file or folder to render from views
 calc_dest() {
-    [[ "$1" ]] || {
+    [[ "$1" = "" ]] && {
         error "error calculating destination: cannot read $1"
         return 0 }
 
