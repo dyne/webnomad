@@ -346,12 +346,19 @@ read_meta() {
 
 # calculate the destination path for a file or folder to render from views
 calc_dest() {
-    { test -r "$1" } || {
+    [[ "$1" ]] || {
         error "error calculating destination: cannot read $1"
         return 0 }
-    # optional 2nd arg: extension
-    ext="$2"
-    { test "$ext" = "" } && { ext="$EXTENSION" }
+
+    if [[ "$CMD" = "test" ]]; then
+        # when in test mode force .html as an extension
+        # since that will make the local preview in browsers work
+        ext=".html"
+    else
+        # optional 2nd arg: extension
+        ext="$2"
+        [[ "$ext" = "" ]] && { ext="$EXTENSION" }
+    fi
 
     func "calc_dest \"$1\" \"$2\""
 
