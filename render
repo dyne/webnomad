@@ -189,7 +189,7 @@ EOF
     [[ "$1" = "" ]] || { print "${@}"; print }
 
     # include all css files found in views/css
-    jsfound=`find $DIR/views/js -name '*.js'`
+    jsfound=`find $DIR/views/js -type f -name '*.js'`
     for j in ${(f)jsfound}; do
         includejs+=(${j##*/})
     done
@@ -201,9 +201,9 @@ EOF
 <script type="text/javascript" src="${baseurl}/js/$j"></script>
 EOF
         if [[ -r "$DIR"/views/js/$j ]]; then
-            cp -a "$DIR"/views/js/$j "$destination"/js
-        elif [[ -r "$SYS"/js/$i ]]; then
-            cp -a "$SYS"/js/$i "$destination"/js
+            cp -f "$DIR"/views/js/$j "$destination"/js
+        elif [[ -r "$SYS"/js/$j ]]; then
+            cp -f "$SYS"/js/$j "$destination"/js
         fi
     done
 
