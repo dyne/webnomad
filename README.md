@@ -18,6 +18,8 @@ Bootstrap CSS, pages can be written in Markdown syntax interlaced into
 HTML, while it uses JQuery and BlueImp to make slideshows using all
 files found into a directory.
 
+[![software by Dyne.org](https://www.dyne.org/wp-content/uploads/2015/12/software_by_dyne.png)](http://www.dyne.org)
+
 ## USE INSTRUCTIONS 
 
 Webnomad is operated from the console terminal.
