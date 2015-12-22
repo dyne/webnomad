@@ -297,13 +297,16 @@ render_html() {
 
         # check which markdown parser is available in PATH
         command -v pandoc > /dev/null
-        if [ "$?" = "0" ]; then parser="pandoc -f markdown_github -t html5"
+        if [[ $? = 0 ]]; then parser="pandoc -f markdown_github -t html5"
         else command -v maruku > /dev/null
-             if [ "$?" = "0" ]; then parser="maruku --html-frag"
+             if [[ $? = 0 ]]; then parser="maruku --html-frag"
              else command -v markdown > /dev/null;
-                  if [ "$?" = "0" ]; then parser=markdown
+                  if [[ $? = 0 ]]; then parser=markdown
                   else command -v multimarkdown > /dev/null
-                       if [ "$?" = "0"]; then parser=multimarkdown
+                       if [[ $? = 0 ]]; then parser=multimarkdown
+                       else
+                           error "no markdown renderer installed, please install pandoc or equivalent"
+                           return 1
                        fi
                   fi
              fi
