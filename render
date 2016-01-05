@@ -435,14 +435,15 @@ for t in $txts; do
     cp $t ${destination}/$txt
 done
 
-# render all HTML views
-htmls=(`find views -type f -name '*.html'`)
-for src in $htmls; do
+
+publish_html() {
+    src="$1"
+    ext=${2:-.html}
 
     # read meta commands
     cat ${src} | read_meta
 
-    dst=`calc_dest "$src"`
+    dst=`calc_dest "$src" $ext`
 
     [[ "$FLOWTYPE" = "" ]] || includecss+=(flowtype.css)
 
@@ -484,7 +485,20 @@ EOF
 
     act "done"
 
+}
+
+# render all HTML views
+htmls=(`find views -type f -name '*.html'`)
+for src in $htmls; do
+    publish_html $src
 done
+
+# render PHP files the same way
+phps=(`find views -type f -name '*.php'`)
+for src in $phps; do
+    publish_html $src .php
+done
+
 
 
 # render all image galleries

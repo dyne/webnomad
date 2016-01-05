@@ -24,6 +24,8 @@ files found into a directory.
 
 Webnomad is operated from the console terminal.
 
+The following dependencies must be installed: `zsh pandoc inotifywait`
+
 ## BASIC USAGE
 
 First create a directory for your website, then place the webnomad
