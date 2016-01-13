@@ -1,0 +1,76 @@
+#!/usr/bin/env zsh
+#
+# WebNomad, your slick and static website publisher
+#
+# Copyright (C) 2012-2016 Denis Roio <jaromil@dyne.org>
+#
+# This source  code is free  software; you can redistribute  it and/or
+# modify it under the terms of  the GNU Public License as published by
+# the Free  Software Foundation; either  version 3 of the  License, or
+# (at your option) any later version.
+#
+# This source code is distributed in  the hope that it will be useful,
+# but  WITHOUT ANY  WARRANTY;  without even  the  implied warranty  of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+# full path to webnomad's system
+R="`pwd`"
+SYS="$R/webnomad"
+source $SYS/zuper
+
+source $SYS/zuper.init
+
+source $R/config.zsh
+
+[[ "$1" = "" ]] && {
+    act "usage: ./webnomad/lock username /server/side/website/path"
+    return 0
+}
+
+[[ "$2" = "" ]] && {
+    error "2nd argument missing: full path of the website on the server side"
+    return 1
+}
+
+_user="$1"
+_path="$2"
+
+notice "Setting up a password lock for user: $_user"
+act "server-side path: $_path"
+
+_new=1
+
+mkdir -p $R/pub
+
+[[ -r $R/pub/.htpasswd ]] && {
+    act "password file already present, adding user"
+    _new=0 }
+
+if [[ $_new = 1 ]]; then
+
+    cat <<EOF > $R/pub/.htaccess
+AuthType Basic
+AuthName "Authentication Required"
+AuthUserFile "$_path/.htpasswd"
+Require valid-user
+EOF
+
+    htpasswd -c $R/pub/.htpasswd $_user
+
+else
+
+    act "previous password protection found:"
+    cat $R/pub/.htaccess
+    act "adding username \"$_user\""
+    htpasswd $R/pub/.htpasswd $_user
+
+fi
+
+notice "Password protection added succesfully."
+act "Make sure to activate .htaccess support on Apache"
+act "i.e. \"AllowOverride AuthConfig\" directive for the website <Directory> entry"
