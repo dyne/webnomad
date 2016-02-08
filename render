@@ -413,6 +413,13 @@ mkdir -p "$destination/img"
 
 
 
+# copy to destination all subdirs in views/
+act -n "publishing all $B views $r ... "
+rsync -a -W "$DIR/views/" "${destination}/"
+# make sure that new css styles are updated
+[[ -r "$DIR/views/css/custom.css" ]] && {
+    cp -f "$DIR/views/css/custom.css" "${destination}/css/" }
+
 
 
 # prepare all fonts
@@ -548,13 +555,6 @@ idxs+=(`find views -type f -name '*.index'`)
         done
     done
 }
-
-# copy to destination all subdirs in views/
-act -n "publishing all $B views $r ... "
-rsync -a -W --ignore-existing "$DIR/views/" "${destination}/"
-# make sure that new css styles are updated
-[[ -r "$DIR/views/css/custom.css" ]] && {
-    cp -f "$DIR/views/css/custom.css" "${destination}/css/" }
 
 # Here all files are copied inside the destination
 # we can run special operations on file-types and overwrite them now
