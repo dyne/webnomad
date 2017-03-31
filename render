@@ -80,7 +80,13 @@ baseurl="$WEB_ROOT"
 act "SYS = $SYS"
 act "WEB_ROOT = $WEB_ROOT"
 
-render_file() { sed -e "s@\${baseurl}@${baseurl}@g" $@ }
+render_file() {
+	if [[ -r $1 ]]; then
+		sed -e "s@\${baseurl}@${baseurl}@g" $@
+	else
+		warn "$1: render_file not found"
+	fi
+}
 
 render_header() {
     if [[ "$IMAGE" =~ "http://" ]] ; then
@@ -424,8 +430,8 @@ rsync -a -W "$DIR/views/" "${destination}/"
 
 # prepare all fonts
 source $SYS/fonts
-[[ ${#fonts} -gt 0 ]] && {
-    rsync -a -W "$DIR/fonts/*" "$DIR/" }
+# [[ ${#fonts} -gt 0 ]] && {
+#     rsync -a -W "$DIR/fonts/" "$destination/" }
 
 act -n "Clean up all temp files ... "
 temps=(`find "$destination" -type f -name 'temp-*'`)
