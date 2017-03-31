@@ -138,7 +138,9 @@ https://www.dyne.org/donate
 
 ## LICENSE
 
-WebNomad is Copyright (C) 2012-2015 Denis Roio <jaromil@dyne.org>
+WebNomad is Copyright (C) 2012-2017 by Dyne.org foundation
+
+Designed, written and maintained by Denis Roio <jaromil@dyne.org>
 
     This program is free software: you can redistribute it and/or
     modify it under the terms of the GNU Affero General Public License

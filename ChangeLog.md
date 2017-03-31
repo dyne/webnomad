@@ -1,3 +1,8 @@
+# 0.5
+## 31 March 2017
+
+	Minor fixes to rendering and support for php files.
+
 # 0.4
 ## 12 October 2015
 
