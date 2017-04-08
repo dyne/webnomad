@@ -189,11 +189,6 @@ render_footer() {
 </div><!--/.container-->
 EOF
 
-    render_file "$DIR"/tmpl/footer.html
-
-    # add any string argument to the footer
-    [[ "$1" = "" ]] || { print "${@}"; print }
-
     # include all css files found in views/css
     jsfound=`find $DIR/views/js -type f -name '*.js'`
     for j in ${(f)jsfound}; do
@@ -212,6 +207,12 @@ EOF
             cp -f "$SYS"/js/$j "$destination"/js
         fi
     done
+
+
+    render_file "$DIR"/tmpl/footer.html
+
+    # add any string argument to the footer
+    [[ "$1" = "" ]] || { print "${@}"; print }
 
     # if test mode then render the test footer
     [[ "$CMD" = "test" ]] && render_test_footer
