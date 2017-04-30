@@ -110,7 +110,7 @@ EOF
 
 # TODO: make a list of main files in the navbar
 # or perhaps implement a sidebar
-
+touch config.zsh
 grep '^# WEBNOMAD CONFIGURATION' config.zsh >/dev/null || {
 
     cat <<EOF >> config.zsh
