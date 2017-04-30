@@ -24,6 +24,7 @@
 
 SYS="`pwd`/webnomad"
 
+helpers=1
 source $SYS/zuper
 
 vars+=(SYS DIR CMD dst)
@@ -32,9 +33,12 @@ vars+=(TITLE DESCRIPTION KEYWORDS TYPE IMAGE EXTENSION)
 vars+=(WEB_ROOT FILES_ROOT THUMB_SIZE BOOTSTRAP destination)
 vars+=(FLOWTYPE FONT_RATIO EXIF_CLEAN EXIF_COMMENT EXIF_ROTATE)
 vars+=(total_fonts cssfound)
-
 arrs+=(includecss includejs fonts)
 arrs+=(custom_fonts)
+
+# used by maildir
+vars+=(mail_id mail_render mail_date mail_insert_date mail_from mail_subj)
+vars+=(mdsrc mdname)
 
 source $SYS/zuper.init
 
@@ -345,6 +349,11 @@ render_html() {
 }
 
 read_meta() {
+	# read metadata on each file which can change global settings
+	# format:
+	# # title put anything here
+	# # description put your description here
+	# # keywords list of keywords here
     tmp=`head -n 3 | awk '
     !/^#/ { next }
     /title/ { printf "title=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
@@ -405,7 +414,7 @@ mkdir -p "$destination/css"
 mkdir -p "$destination/js"
 mkdir -p "$destination/img"
 
-[[ $BOOTSTRAP = 0 ]] || {
+[[ "$BOOTSTRAP" = "" ]] || {
     #{ test -r "$destination"/css/bootstrap.css } || {
     cp "$SYS"/css/bootstrap.css            "$destination"/css/
     cp "$SYS"/img/*                        "$destination"/img/
@@ -501,6 +510,62 @@ EOF
 
 }
 
+
+
+# render all maildirs
+maildirs=(`find views -type f -name '*.maildir'`)
+maildirs+=(`find views -type f -name '*.maildirs'`)
+[[ "${#maildirs}" > 0 ]] && {
+	source $SYS/maildir
+	for mdsrc in $maildirs; do
+		act "Maildirs list: $mdsrc"
+
+		# base directory where to render
+		mdname=${"$(basename $mdsrc)"[(ws:.:)1]}
+		act "rendering in views/${mdname}.msg"
+		mkdir -p views/${mdname}.msg
+
+		cat ${mdsrc} | read_meta
+		for md in ${(f)"$(cat $mdsrc)"}; do
+			act "Maildir rendering: $md"
+			maildircheck "$md" || continue
+			mdb="${mdsrc}.db"
+
+			[[ -r "$mdb" ]] || maildb_create "$mdb"
+			# iterate through emails in maildir and insert new ones
+			mails=`find "${md}/new" "${md}/cur" "${md}/tmp" -type f`
+			act "`print ${mails} | wc -l` total emails found"
+			for m in ${(f)mails}; do
+				mail_id=${"$(sha256sum $m)"[(w)1]}
+				u=`maildb_lookup_uid "$mdb" "$mail_id"`
+				[[ "$u" = "" ]] && {
+					mail_getinfo "$m"
+					# $u is a new message
+					act "new message found: $mail_subj"
+					maildb_insert "$mdb" "$m"
+				}
+			done
+
+			# iterate through database and render emails missing
+			for m in ${(f)"$(maildb_list $mdb)"}; do
+				mail_fill "$m"
+				[[ -r pub/${mdname}.msg/${mail_id}.html ]] && {
+					func "skip already rendered: $mail_id"
+					continue }
+				mail_file_render \
+					"$mail_file" \
+					> "views/${mdname}.msg/${mail_id}.html"
+			done
+		done
+
+		# render indexes
+		mail_index_render
+
+		mail_atom_render
+	done
+}
+
+
 # render all HTML views
 htmls=(`find views -type f -name '*.html'`)
 for src in $htmls; do
@@ -516,10 +581,10 @@ done
 
 
 # render all image galleries
-source $SYS/gallery
 gals=(`find views -type f -name '*.gal'`)
 gals+=(`find views -type f -name '*.gallery'`)
-if [[ "${#gals}" > 0 ]]; then
+[[ "${#gals}" > 0 ]] && {
+	source $SYS/gallery
 
     cp "$SYS"/js/*blueimp*     "$destination"/js/
     cp "$SYS"/css/*blueimp*    "$destination"/css/
@@ -532,10 +597,9 @@ if [[ "${#gals}" > 0 ]]; then
         cat $src | render_gallery > $dst
         [[ $QUIET = 1 ]] || print "done"
     done
+}
 
-fi
-
-# render all directory indexes
+# render all directory indexes (TODO: properly fix recursion)
 idxs=(`find views -type f -name '*.idx'`)
 idxs+=(`find views -type f -name '*.index'`)
 { test ${#idxs} = 0 } || {

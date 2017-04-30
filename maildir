@@ -1,0 +1,508 @@
+#!/usr/bin/env zsh
+#
+# WebNomad, your slick and static website publisher
+# (this 'maildir' code is taken from jaromail)
+#
+# Copyright (C) 2010-2017 Denis Roio <jaromil@dyne.org>
+#
+# This source  code is free  software; you can redistribute  it and/or
+# modify it under the terms of  the GNU Public License as published by
+# the Free  Software Foundation; either  version 3 of the  License, or
+# (at your option) any later version.
+#
+# This source code is distributed in  the hope that it will be useful,
+# but  WITHOUT ANY  WARRANTY;  without even  the  implied warranty  of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+# checks if its a maildir
+# returns 0 (success) if yes
+# no in all other cases
+maildircheck() {
+	fn maildircheck $*
+
+    [[ -r "$1" ]] || {
+        func "Maildir not existing: $1"
+        return 1 }
+    [[ -r "$1/cur" ]] && {
+        return 0 } # Yes is a maildir
+    # shortened test to speedup
+    #	&& { test -r $1/new } \
+	#	&& { test -r $1/tmp } \
+	error "Not a maildir: $1"
+	return 1
+}
+
+# short utility to print only mail headers
+hdr() {
+	[[ -r "$1" ]] || {
+        error "hdr() called on non existing file: $1"
+        return 1 }
+    awk '{ print $0 }
+/^$/ { exit }' "$1"
+}
+
+# creates the database keeping up-to-date information
+# on which emails inside the maildir are already published
+maildb_create() {
+    fn pubdb_create $*
+    [[ -r "$1" ]] && {
+        warning "Maildir database already exists: $1"
+        return 1 }
+
+    cat <<EOF | sqlite3 -batch "$1"
+CREATE TABLE published
+(
+  uid   text collate nocase unique,
+  file  text collate nocase,
+  path  text collate nocase,
+  mail_subj text,
+  mail_from text,
+  mail_date   timestamp,
+  insert_date timestamp
+);
+EOF
+    [[ $? != 0 ]] && {
+        error "Error creating maildir database: $1"
+        return 1
+    }
+    # make sure is private
+    chmod 600 "$1"
+    chown $_uid:$_gid "$1"
+
+	act "Maildir database created: $1"
+    return 0
+}
+
+maildb_lookup_uid() {
+	# arg 1: sqlite database file
+	# arg 2: uid string to search
+	fn maildb_lookup_uid $*
+    _db="$1"
+	_id="$2"
+	req=(_db _id)
+	ckreq || return 1
+
+    cat <<EOF | sqlite3 -column -batch "$1"
+SELECT file FROM published
+WHERE uid IS "${(Q)2}";
+EOF
+}
+
+maildb_insert() {
+	fn maildb_insert $*
+    _db="$1"
+	_path="$2"
+    _file=`basename "$2"`
+	req=(_db _path _file)
+	freq=("$_db" "$_path")
+	ckreq || return 1
+
+    # TODO:
+    #    _time=`${WORKDIR}/bin/fetchdate "$1" "%Y-%m-%d-%H-%M-%S"`
+    func "new mail in database: $_file"
+    cat <<EOF | sqlite3 -batch "$_db"
+INSERT INTO published (uid, file, path, mail_from, mail_subj,
+	   				   mail_date, insert_date)
+VALUES ("${mail_id}", "${_file}", "${_path}",
+	    "${mail_from}", "${mail_subj}",
+ 		"${mail_date}", "${mail_insert_date}");
+EOF
+    [[ $? = 0 ]] || {
+		error "mail_insert: duplicate found in $_db"
+		return 1 }
+
+    return 0
+}
+
+maildb_list() {
+    fn maildb_list $*
+	_db="$1"
+	req=(_db)
+	freq=($_db)
+	ckreq || return 1
+
+    cat <<EOF | sqlite3 -batch "$_db"
+.width 64 128
+.separator "|"
+SELECT uid, path, mail_from, mail_subj, mail_date, insert_date FROM published
+ORDER BY insert_date DESC;
+EOF
+}
+
+# takes an entry from maildb_list and fills in globals
+mail_fill() {
+	fn mail_fill $*
+	_e="$1"
+	req=(_e)
+	ckreq || return 1
+	mail_id=${_e[(ws:|:)1]}
+	mail_file=${_e[(ws:|:)2]}
+	mail_from=${_e[(ws:|:)3]}
+	mail_subj=${_e[(ws:|:)4]}
+	mail_date=${_e[(ws:|:)5]}
+	mail_insert_date=${_e[(ws:|:)6]}
+}
+
+mail_getinfo() {
+	fn mail_getinfo $*
+
+    # TODO: path should be file only, find through all maildir
+    _path="$1"
+	req=(_path)
+	freq=($_path)
+	ckreq || return 1
+
+	# extract header
+	_hdr=`hdr "$_path"`
+
+	# compute rendered filename
+    mail_render=`print ${mail_id} | sed -e 's/\///g'`.html
+	func "RENDER: $mail_render"
+
+	# gather content headers
+	mail_from=`print "$_hdr" | cut -d'<' -f1 | awk '
+/^From/ { for(i=2;i<=NF;i++) printf "%s ", $i; }
+' | sed 's/"//g'`
+
+
+	mail_subj=`print "$_hdr" | awk '
+/^Subject/ { for(i=2;i<=NF;i++) printf "%s ", $i; }
+' | escape_html`
+
+	# compute date found in the email headers
+	_date=`print "$_hdr" | awk '
+/^Date/ { for(i=2;i<=NF;i++) printf "%s ", $i; }'`
+	mail_date=`date -d"$_date" --rfc-3339=seconds | sed 's/ /T/'`
+	func "DATE: $mail_date"
+
+	mail_insert_date=`date --rfc-3339=seconds | sed 's/ /T/'`
+	func "INSERTED: $mail_insert_date"
+    # ATOM spec wants a T where date puts a space
+    #    date --rfc-3339=seconds | sed 's/ /T/'
+	return 0
+}
+
+
+# this one requires maildir-utils in apt
+mail_file_render() {
+	fn mail_file_render $*
+    _path="$1"
+	req=(_path)
+	freq=($_path)
+	ckreq || return 1
+
+	cat <<EOF
+
+			<h2>${mail_subj}</h2>
+			<h4>From: ${mail_from} - ${mail_date}</h4>
+
+EOF
+
+    # check if it has already html
+    _html=`mu extract "$_path" | awk '/text\/html/ {print $1; exit}'`
+    [[ "$_html" = "" ]] || {
+
+        mu extract --overwrite --parts="$_html" "$_path"
+        # check if there is an html header to weed out
+        grep '<body>' "$_html".part > /dev/null
+        if [ $? = 0 ]; then
+            awk '
+BEGIN { body=0 }
+/<body/ { body=1; next }
+/<\/body/ { body=0; next }
+{ if(body==1) print $0 }' "$_html".part | iconv -c
+        else
+            cat "$_html".part | iconv -c
+        fi
+        rm -f "$_html".part
+        return 0 }
+
+    # use the first text/plain, parse through markdown just in case
+    _text=`mu extract "$_path" | awk '/text\/plain/ {print $1; exit}'`
+    { test "$_text" = "" } || {
+
+        mu extract --overwrite --parts="$_text" "$_path"
+
+        cat "$_text".part | iconv -c | escape_html |
+			pandoc -f markdown_github -t html
+        rm -f "$_text".part
+
+        return 0 }
+
+	warning "nothing found to render in $_path"
+	return 1
+		# to make http text a link: (breaks if there are <a refs already)
+        # s|www\.[^ |<]*|<a href="http://&">&</a>|g'
+
+        # here we tweak the origin to avoid headers in markdown
+        # preferring to interpret # as inline preformat
+
+        #         cat "$_text".part | sed '
+        # s/^#/    /g
+        # ' | iconv -c | maruku --html-frag 2>/dev/null | sed '
+        # s|http://[^ |<]*|<a href="&">&</a>|g
+        # s|https://[^ |<]*|<a href="&">&</a>|g
+        # '
+
+		# check if its an html only mail
+		# _html=`mu extract "$_path" | awk '/text\/html/ {print $1; exit}'`
+		# { test "$_html" = "" } || {
+		#   mu extract --overwrite --parts="$_html" "$_path"
+		#   elinks -dump "$_html".part
+		#   rm "$_html".part
+		#   return 0 }
+
+}
+
+mail_index_render() {
+	fn mail_index_render $*
+	_db="${mdsrc}.db"
+	req=(mdsrc mdname)	
+	freq=($mdsrc $_db)
+	ckreq || return 1
+
+    cat <<EOF > "views/${mdname}.html"
+<table class="table table-hover table-condensed">
+<thead><tr>
+<th style="width:100px"><!-- from name --></th>
+<th><!-- subject --></th>
+</tr></thead>
+EOF
+
+	for m in ${(f)"$(maildb_list $_db)"}; do
+		mail_fill "$m"
+
+		cat <<EOF >> "views/${mdname}.html"
+<tr>
+<td style="vertical-align:middle;"><a href="${WEB_ROOT}/${mdname}.msg/${mail_id}.html">
+	${mail_from}</a></td>
+<td style="vertical-align:middle;word-wrap:break-word">
+<a href="${WEB_ROOT}/${mdname}.msg/${mail_id}.html">${mail_subj}</a>
+</td>
+</tr>
+
+EOF
+	done
+}
+
+mail_atom_render() {
+	fn mail_atom_render $*
+	_db="${mdsrc}.db"
+	req=(mdsrc mdname)	
+	freq=($mdsrc $_db)
+	ckreq || return 1
+
+	cat <<EOF > "views/${mdname}.atom.xml"
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+<title type="text">${TITLE}</title>
+
+<link rel="self" href="${WEB_ROOT}/${mdname}.atom.xml" />
+<link href="${WEB_ROOT}/${mdname}.html" />
+<id>${WEB_ROOT}/${mdname}.atom.xml</id>
+
+<updated>`date --rfc-3339=seconds | sed 's/ /T/'`</updated>
+<generator uri="http://www.dyne.org/software/webnomad/">WebNomad</generator>
+
+<subtitle type="html">${DESCRIPTION}</subtitle>
+<logo>http://dyne.org/dyne.png</logo>
+
+EOF
+
+    # write out the atom entry
+	for m in ${(f)"$(maildb_list $_db)"}; do
+		mail_fill "$m"
+		eurl="${WEB_ROOT}/${mdname}.msg/${mail_id}.html"
+		cat <<EOF >> "views/${mdname}.atom.xml"
+<entry>
+    <title type="html" xml:lang="en-US">${mail_subj}</title>
+    <link href="${eurl}" />
+    <id>${eurl}</id>
+    <updated>${mail_insert_date}</updated>
+<content type="html" xml:lang="en-US">
+${mail_subj}
+</content>
+<author>
+    <name>${mail_from}</name>
+    <uri>${eurl}</uri>
+</author>
+<source>
+    <title type="html">${mail_subj}</title>
+    <subtitle type="html">From: ${mail_from}</subtitle>
+        <updated>${mail_insert_date}</updated>
+    <link rel="self" href="${eurl}" />
+    <id>${eurl}</id>
+</source>
+</entry>
+
+EOF
+	done
+
+	cat <<EOF >> "views/${mdname}.atom.xml"
+</feed>
+EOF
+}
+
+ # iterate through the pubdb and publish an rss
+pubdb_render_maildir() {
+     func "publish_render_maildir() $@"
+     md="$1"
+     [[ "$md" = "" ]] && {
+         error "Publish_render_maildir: not found: $md"
+         return 1
+     }
+     maildircheck "${md}"  || {
+         error "Publish_render_maildir: not a maildir: $md"
+         return 1
+     }
+     [[ -r "${md}/pub" ]] || {
+         error "Publish_render_maildir: webnomad not found in ${md}"
+         error "Initialize Webnomad inside the maildir that you want published."
+         return 1
+     }
+
+     views="${md}/views"
+     pubdb="${md}/.pubdb"
+     [[ -r "$pubdb" ]] || {
+         error "Publish_render_maildir: first run update_pubdb for $md"; return 1 }
+
+     #    ${=mkdir} $TMPPREFIX/pubdb
+
+     mails=`maildb_list $md | head -n ${FEED_LIMIT:=30}`
+
+     # source webnomad's configurations
+     [[ -r "${md}/config.zsh" ]] && { source "${md}/config.zsh" }
+
+     cat <<EOF > ${md}/views/atom.xml
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+<title type="text">${TITLE}</title>
+
+<link rel="self" href="${WEB_ROOT}/atom.xml" />
+<link href="${WEB_ROOT}" />
+<id>${WEB_ROOT}/atom.xml</id>
+
+<updated>`date --rfc-3339=seconds | sed 's/ /T/'`</updated>
+<generator uri="http://www.dyne.org/software/jaro-mail/">JaroMail</generator>
+
+<subtitle type="html">${DESCRIPTION}</subtitle>
+<logo>http://dyne.org/dyne.png</logo>
+
+EOF
+
+
+     cat <<EOF > "${md}/views/index.html"
+<table class="table table-hover table-condensed">
+<thead><tr>
+<th style="width:100px"><!-- from name --></th>
+<th><!-- subject --></th>
+</tr></thead>
+
+EOF
+
+     # main loop
+     c=0
+
+     for m in ${(f)mails}; do
+         [[ "$m[1]" = "." ]] && { _base=`pwd` }
+         # fill in uid and upath
+         pubdb_getuid "$_base/$m"
+
+         # but skip entries no more existing in maildir
+         [[ -r "$m" ]] || { continue }
+         # TODO: remove $m from database if not in maildir
+
+         _from=`hdr "$m" | ${WORKDIR}/bin/fetchaddr -x From -a`
+
+         _fname=`print ${(Q)_from[(ws:,:)2]}` # | iconv -c`
+
+         func "From: ${_fname}"
+         _subject=`hdr "$m" | awk '
+/^Subject:/ { for(i=2;i<=NF;i++) printf "%s ", $i; printf "\n" }
+' | escape_html`
+
+         # fill in uid and upath
+         pubdb_getuid "$m"
+
+         # fill in the body
+         _body=`pubdb_extract_body $_base/$m`
+
+         [[ "$_body" = "" ]] && { error "Error rendering $m" }
+
+         (( ++c ))
+         if (( $c < ${FEED_LIMIT:=30} )); then
+
+             # write out the atom entry
+             cat <<EOF >> ${md}/views/atom.xml
+
+<entry>
+    <title type="html" xml:lang="en-US">$_subject</title>
+    <link href="${WEB_ROOT}/${upath}" />
+    <id>${WEB_ROOT}/${upath}</id>
+    <updated>`pubdb_date "$m"`</updated>
+<content type="html" xml:lang="en-US">
+`print ${(f)_body} | escape_html`
+</content>
+<author>
+    <name>${_fname}</name>
+    <uri>${WEB_ROOT}/${upath}</uri>
+</author>
+<source>
+    <title type="html">${_subject}</title>
+    <subtitle type="html">From: ${_fname}</subtitle>
+        <updated>${_daterss}</updated>
+    <link rel="self" href="${WEB_ROOT}/${upath}" />
+    <id>${WEB_ROOT}/${upath}</id>
+</source>
+</entry>
+
+EOF
+
+         fi # FEED LIMIT not reached
+
+         #######
+         # now build an index and the sitemap
+
+
+         # if using webnomad write out also the message page
+         [[ -d "${md}/views" ]] && {
+             act "${_datestring} - ${_subject}"
+             _datestring=`hdr "$_path" | awk '/^Date/ { print $0 }'`
+             cat <<EOF > "${md}/views/${upath}"
+<h2>${_subject}</h2>
+<h4>From: ${_fname} - ${_datestring}</h4>
+
+${_body}
+
+EOF
+             # add entry in index
+             cat <<EOF >> "${md}/views/index.html"
+
+<tr>
+<td style="vertical-align:middle;"><a href="${WEB_ROOT}/${upath}">${_fname}</a></td>
+<td style="vertical-align:middle;word-wrap:break-word">
+<a href="${WEB_ROOT}/${upath}">${_subject}</a>
+</td>
+</tr>
+
+EOF
+         }
+     done # loop is over
+
+     cat <<EOF >> "${md}/views/atom.xml"
+</feed>
+EOF
+
+     cat <<EOF >> "${md}/views/index.html"
+</table>
+EOF
+
+     notice "Archive website rendering completed"
+ }
