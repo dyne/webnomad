@@ -268,6 +268,7 @@ mail_index_render() {
     cat <<EOF > "views/${mdname}.html"
 <table class="table table-hover table-condensed">
 <thead><tr>
+<th style="width:230px"><!-- date --></th>
 <th style="width:100px"><!-- from name --></th>
 <th><!-- subject --></th>
 </tr></thead>
@@ -278,8 +279,9 @@ EOF
 
 		cat <<EOF >> "views/${mdname}.html"
 <tr>
-<td style="vertical-align:middle;"><a href="${WEB_ROOT}/${mdname}.msg/${mail_id}.html">
-	${mail_from}</a></td>
+<td style="vertical-align:middle;">`date -d"${mail_date}" +"%e %B %Y"`</a>
+<td style="vertical-align:middle;">
+	${mail_from}</td>
 <td style="vertical-align:middle;word-wrap:break-word">
 <a href="${WEB_ROOT}/${mdname}.msg/${mail_id}.html">${mail_subj}</a>
 </td>
