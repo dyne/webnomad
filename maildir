@@ -168,6 +168,25 @@ mail_getinfo() {
 	mail_from=`print "$_hdr" | cut -d'<' -f1 | awk '
 /^From/ { for(i=2;i<=NF;i++) printf "%s ", $i; }
 ' | sed 's/"//g'`
+	# if from is base64 encapsulated, get it out
+	# i.e: =?UTF-8?B?w5Zyc2FuIMWeZW5hbHA=?=
+	[[ "${mail_from[1]}" = "=" ]] && [[ "${mail_from[2]}" = "?" ]] && {
+		_enc="${mail_from[(ws:?:)2]}"
+		func "CONVERT: $mail_from"
+		# can be B or Q. B is for base64
+        if [[ "${mail_from[(ws:?:)3]}" = "B" ]]; then
+            _tmp=`print "${mail_from[(ws:?:)4]}" | recode ${_enc}/base64..UTF8`
+            [[ "$_tmp" = "" ]] || mail_from=$_tmp
+        elif [[ "${mail_from[(ws:?:)3]}" = "Q" ]]; then
+            _tmp=`print "${mail_from[(ws:?:)4]}" | recode ${_enc}/QP..UTF8`
+            [[ "$_tmp" = "" ]] || mail_from=$_tmp
+        fi
+        func "converted to $mail_from"
+
+    }
+
+
+
 
 
 	mail_subj=`print "$_hdr" | awk '
@@ -236,33 +255,13 @@ BEGIN { body=0 }
 
 	warning "nothing found to render in $_path"
 	return 1
-		# to make http text a link: (breaks if there are <a refs already)
-        # s|www\.[^ |<]*|<a href="http://&">&</a>|g'
-
-        # here we tweak the origin to avoid headers in markdown
-        # preferring to interpret # as inline preformat
-
-        #         cat "$_text".part | sed '
-        # s/^#/    /g
-        # ' | iconv -c | maruku --html-frag 2>/dev/null | sed '
-        # s|http://[^ |<]*|<a href="&">&</a>|g
-        # s|https://[^ |<]*|<a href="&">&</a>|g
-        # '
-
-		# check if its an html only mail
-		# _html=`mu extract "$_path" | awk '/text\/html/ {print $1; exit}'`
-		# { test "$_html" = "" } || {
-		#   mu extract --overwrite --parts="$_html" "$_path"
-		#   elinks -dump "$_html".part
-		#   rm "$_html".part
-		#   return 0 }
 
 }
 
 mail_index_render() {
 	fn mail_index_render $*
 	_db="${mdsrc}.db"
-	req=(mdsrc mdname)	
+	req=(mdsrc mdname)
 	freq=($mdsrc $_db)
 	ckreq || return 1
 
@@ -293,7 +292,7 @@ EOF
 mail_atom_render() {
 	fn mail_atom_render $*
 	_db="${mdsrc}.db"
-	req=(mdsrc mdname)	
+	req=(mdsrc mdname)
 	freq=($mdsrc $_db)
 	ckreq || return 1
 
@@ -348,161 +347,3 @@ EOF
 </feed>
 EOF
 }
-
- # iterate through the pubdb and publish an rss
-pubdb_render_maildir() {
-     func "publish_render_maildir() $@"
-     md="$1"
-     [[ "$md" = "" ]] && {
-         error "Publish_render_maildir: not found: $md"
-         return 1
-     }
-     maildircheck "${md}"  || {
-         error "Publish_render_maildir: not a maildir: $md"
-         return 1
-     }
-     [[ -r "${md}/pub" ]] || {
-         error "Publish_render_maildir: webnomad not found in ${md}"
-         error "Initialize Webnomad inside the maildir that you want published."
-         return 1
-     }
-
-     views="${md}/views"
-     pubdb="${md}/.pubdb"
-     [[ -r "$pubdb" ]] || {
-         error "Publish_render_maildir: first run update_pubdb for $md"; return 1 }
-
-     #    ${=mkdir} $TMPPREFIX/pubdb
-
-     mails=`maildb_list $md | head -n ${FEED_LIMIT:=30}`
-
-     # source webnomad's configurations
-     [[ -r "${md}/config.zsh" ]] && { source "${md}/config.zsh" }
-
-     cat <<EOF > ${md}/views/atom.xml
-<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
-<feed xmlns="http://www.w3.org/2005/Atom">
-
-<title type="text">${TITLE}</title>
-
-<link rel="self" href="${WEB_ROOT}/atom.xml" />
-<link href="${WEB_ROOT}" />
-<id>${WEB_ROOT}/atom.xml</id>
-
-<updated>`date --rfc-3339=seconds | sed 's/ /T/'`</updated>
-<generator uri="http://www.dyne.org/software/jaro-mail/">JaroMail</generator>
-
-<subtitle type="html">${DESCRIPTION}</subtitle>
-<logo>http://dyne.org/dyne.png</logo>
-
-EOF
-
-
-     cat <<EOF > "${md}/views/index.html"
-<table class="table table-hover table-condensed">
-<thead><tr>
-<th style="width:100px"><!-- from name --></th>
-<th><!-- subject --></th>
-</tr></thead>
-
-EOF
-
-     # main loop
-     c=0
-
-     for m in ${(f)mails}; do
-         [[ "$m[1]" = "." ]] && { _base=`pwd` }
-         # fill in uid and upath
-         pubdb_getuid "$_base/$m"
-
-         # but skip entries no more existing in maildir
-         [[ -r "$m" ]] || { continue }
-         # TODO: remove $m from database if not in maildir
-
-         _from=`hdr "$m" | ${WORKDIR}/bin/fetchaddr -x From -a`
-
-         _fname=`print ${(Q)_from[(ws:,:)2]}` # | iconv -c`
-
-         func "From: ${_fname}"
-         _subject=`hdr "$m" | awk '
-/^Subject:/ { for(i=2;i<=NF;i++) printf "%s ", $i; printf "\n" }
-' | escape_html`
-
-         # fill in uid and upath
-         pubdb_getuid "$m"
-
-         # fill in the body
-         _body=`pubdb_extract_body $_base/$m`
-
-         [[ "$_body" = "" ]] && { error "Error rendering $m" }
-
-         (( ++c ))
-         if (( $c < ${FEED_LIMIT:=30} )); then
-
-             # write out the atom entry
-             cat <<EOF >> ${md}/views/atom.xml
-
-<entry>
-    <title type="html" xml:lang="en-US">$_subject</title>
-    <link href="${WEB_ROOT}/${upath}" />
-    <id>${WEB_ROOT}/${upath}</id>
-    <updated>`pubdb_date "$m"`</updated>
-<content type="html" xml:lang="en-US">
-`print ${(f)_body} | escape_html`
-</content>
-<author>
-    <name>${_fname}</name>
-    <uri>${WEB_ROOT}/${upath}</uri>
-</author>
-<source>
-    <title type="html">${_subject}</title>
-    <subtitle type="html">From: ${_fname}</subtitle>
-        <updated>${_daterss}</updated>
-    <link rel="self" href="${WEB_ROOT}/${upath}" />
-    <id>${WEB_ROOT}/${upath}</id>
-</source>
-</entry>
-
-EOF
-
-         fi # FEED LIMIT not reached
-
-         #######
-         # now build an index and the sitemap
-
-
-         # if using webnomad write out also the message page
-         [[ -d "${md}/views" ]] && {
-             act "${_datestring} - ${_subject}"
-             _datestring=`hdr "$_path" | awk '/^Date/ { print $0 }'`
-             cat <<EOF > "${md}/views/${upath}"
-<h2>${_subject}</h2>
-<h4>From: ${_fname} - ${_datestring}</h4>
-
-${_body}
-
-EOF
-             # add entry in index
-             cat <<EOF >> "${md}/views/index.html"
-
-<tr>
-<td style="vertical-align:middle;"><a href="${WEB_ROOT}/${upath}">${_fname}</a></td>
-<td style="vertical-align:middle;word-wrap:break-word">
-<a href="${WEB_ROOT}/${upath}">${_subject}</a>
-</td>
-</tr>
-
-EOF
-         }
-     done # loop is over
-
-     cat <<EOF >> "${md}/views/atom.xml"
-</feed>
-EOF
-
-     cat <<EOF >> "${md}/views/index.html"
-</table>
-EOF
-
-     notice "Archive website rendering completed"
- }
