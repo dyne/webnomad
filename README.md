@@ -24,7 +24,11 @@ files found into a directory.
 
 Webnomad is operated from the console terminal.
 
-The following dependencies must be installed: `zsh pandoc inotifywait`
+The following dependencies must be installed: `zsh pandoc`
+
+This dependency is optional for preview mode: ` inotifywait`
+
+These dependencies are optional for maildir support: `maildir-utils recode`
 
 ## BASIC USAGE
 
