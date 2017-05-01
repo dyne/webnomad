@@ -181,13 +181,12 @@ mail_getinfo() {
             _tmp=`print "${mail_from[(ws:?:)4]}" | recode ${_enc}/QP..UTF8`
             [[ "$_tmp" = "" ]] || mail_from=$_tmp
         fi
-        func "converted to $mail_from"
-
-    }
-
-
-
-
+        func "converted to $mail_from" }
+	isemail "${mail_from}" && {
+		# if is an email take only first part for privacy
+		_tmp=${mail_from[(ws:@:)1]}
+		mail_from=${_tmp}
+	}
 
 	mail_subj=`print "$_hdr" | awk '
 /^Subject/ { for(i=2;i<=NF;i++) printf "%s ", $i; }
