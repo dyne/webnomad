@@ -122,6 +122,8 @@ EOF
 maildb_list() {
     fn maildb_list $*
 	_db="$1"
+	_order=${2:-insert_date}
+	_limit=${3:-100}
 	req=(_db)
 	freq=($_db)
 	ckreq || return 1
@@ -130,7 +132,8 @@ maildb_list() {
 .width 64 128
 .separator "|"
 SELECT uid, path, mail_from, mail_subj, mail_date, insert_date FROM published
-ORDER BY insert_date DESC;
+ORDER BY $_order DESC
+LIMIT $_limit;
 EOF
 }
 
@@ -205,6 +208,15 @@ mail_getinfo() {
 	return 0
 }
 
+mail_html_normal() {
+	# remove mailchimp footer and unsubscribe links
+	iconv -c | grep -i -v 'unsubscribe' \
+		| awk '
+BEGIN { spam=0 }
+/canspam/ { spam=1; next }
+{ if(spam==0) print $0
+}'
+}
 
 # this one requires maildir-utils in apt
 mail_file_render() {
@@ -233,9 +245,9 @@ EOF
 BEGIN { body=0 }
 /<body/ { body=1; next }
 /<\/body/ { body=0; next }
-{ if(body==1) print $0 }' "$_html".part | iconv -c
+{ if(body==1) print $0 }' "$_html".part | mail_html_normal
         else
-            cat "$_html".part | iconv -c
+            cat "$_html".part | mail_html_normal
         fi
         rm -f "$_html".part
         return 0 }
@@ -273,7 +285,7 @@ mail_index_render() {
 </tr></thead>
 EOF
 
-	for m in ${(f)"$(maildb_list $_db)"}; do
+	for m in ${(f)"$(maildb_list $_db mail_date)"}; do
 		mail_fill "$m"
 
 		cat <<EOF >> "views/${mdname}.html"
