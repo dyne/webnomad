@@ -25,7 +25,7 @@
 SYS="`pwd`/webnomad"
 
 helpers=1
-source $SYS/zuper
+source $SYS/zuper/zuper
 
 vars+=(SYS DIR CMD dst)
 
@@ -40,10 +40,10 @@ arrs+=(custom_fonts)
 vars+=(mail_id mail_render mail_date mail_insert_date mail_from mail_subj)
 vars+=(mdsrc mdname)
 
-source $SYS/zuper.init
+source $SYS/zuper/zuper.init
 
 
-VERSION=0.4
+VERSION=0.5
 
 # fill path to the source website root
 DIR="`pwd`"
