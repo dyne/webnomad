@@ -340,19 +340,24 @@ render_html() {
 
 }
 
-read_meta() {
-	# read metadata on each file which can change global settings
-	# format:
-	# # title put anything here
-	# # description put your description here
-	# # keywords list of keywords here
-    tmp=`head -n 3 | awk '
-    !/^#/ { next }
-    /title/ { printf "title=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
-    /description/ { printf "description=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
-    /keywords/ { printf "keywords=\""; for(i=3;i<=NF;i++) printf "%s ", $i; printf "\";" }
-    '`
-    eval "$tmp"
+strip_meta() {
+	awk 'BEGIN { meta=0; }
+/^<meta>/ { meta=1; next }
+/^<\/meta>/ { meta=0; next }
+{ if(meta==1) next;
+  else        print $0; }'
+}
+
+# read metadata on each file which can change global settings
+source_meta() {
+	# source the <meta> contents
+	ztmp
+    awk 'BEGIN { meta=0; }
+/^<meta>/ { meta=1; next }
+/^<\/meta>/ { meta=0; next }
+{ if(meta==1) { print $0 } }
+' > $ztmpfile
+	source $ztmpfile
 }
 
 # calculate the destination path for a file or folder to render from views
@@ -455,8 +460,8 @@ publish_html() {
     src="$1"
     ext=${2:-.html}
 
-    # read meta commands
-    cat ${src} | read_meta
+	# read page specific <meta> settings (overrides config.zsh)
+	cat ${src} | source_meta
 
     dst=`calc_dest "$src" $ext`
 
@@ -485,7 +490,8 @@ EOF
 EOF
     }
 
-    cat $src | render_html >> $dst
+    # read meta commands
+    cat ${src} | strip_meta | render_html >> $dst
 
     [[ $BOOTSTRAP = 0 ]] || {
         cat <<EOF >> $dst
@@ -517,8 +523,8 @@ maildirs+=(`find views -type f -name '*.maildirs'`)
 		act "rendering in views/${mdname}.msg"
 		mkdir -p views/${mdname}.msg
 
-		cat ${mdsrc} | read_meta
-		for md in ${(f)"$(cat $mdsrc)"}; do
+		cat ${mdsrc} | source_meta
+		for md in ${(f)"$(cat $mdsrc | strip_meta)"}; do
 			act "Maildir rendering: $md"
 			maildircheck "$md" || continue
 			mdb="${mdsrc}.db"
@@ -583,10 +589,10 @@ gals+=(`find views -type f -name '*.gallery'`)
     cp "$SYS"/js/jquery.min.js "$destination"/js/
 
     for src in $gals; do
-        cat ${src} | read_meta
+        cat ${src} | source_meta
         dst=`calc_dest "$src"`
         act -n "Gallery rendering: $B $dst $r ... "
-        cat $src | render_gallery > $dst
+        cat $src | strip_meta | render_gallery > $dst
         [[ $QUIET = 1 ]] || print "done"
     done
 }
