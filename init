@@ -22,9 +22,9 @@ QUIET=0
 DEBUG=0
 
 SYS=`dirname $0`
-source $SYS/zuper
+source $SYS/zuper/zuper
 
-source $SYS/zuper.init
+source $SYS/zuper/zuper.init
 
 act "Initializing Webnomad"
 

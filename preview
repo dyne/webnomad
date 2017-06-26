@@ -21,10 +21,10 @@
 # full path to webnomad's system
 R="`pwd`"
 SYS="$R/webnomad"
-source $SYS/zuper
+source $SYS/zuper/zuper
 vars=(BROWSER TIME_FORMAT OUTPUT_FORMAT SYS)
 vars=(views BROWSER_WINDOW_ID)
-source $SYS/zuper.init
+source $SYS/zuper/zuper.init
 
 source $R/config.zsh
 

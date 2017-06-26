@@ -31,13 +31,13 @@ CMD="`basename $0`"
 QUIET=0
 DEBUG=0
 
-source ${DIR}/zuper
+source ${DIR}/zuper/zuper
 
 { test -r config.zsh } || {
     error "Directory not configured for WebNomad. First use ./webnomad/init"
     return 1 }
 
-source ${DIR}/zuper.init
+source ${DIR}/zuper/zuper.init
 
 source config.zsh
 
