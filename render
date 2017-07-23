@@ -43,7 +43,7 @@ vars+=(mdsrc mdname)
 source $SYS/zuper/zuper.init
 
 
-VERSION=0.5
+VERSION=0.6
 
 # fill path to the source website root
 DIR="`pwd`"

@@ -1,3 +1,10 @@
+# 1.0
+## 23 July 2017
+
+	Various fixes to meta handling, new maildir rendering,
+	js inclusion and markdown rendering. Final release of
+    webnomad v1 (no more features planned, only maintainance).
+	
 # 0.5
 ## 31 March 2017
 
