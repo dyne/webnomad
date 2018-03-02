@@ -77,6 +77,7 @@ themedesc[united]="light, white background, sans, orange block menus"
 }
 
 notice "Installing theme: $1"
+mkdir -p views test
 cp -v ${DIR}/themes/$1/bootstrap.min.css views/css/bootstrap.min.css
 cp -v ${DIR}/themes/$1/bootstrap.min.css test/css/bootstrap.min.css
 

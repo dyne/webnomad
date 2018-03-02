@@ -440,6 +440,9 @@ rsync -a -W "$DIR/views/" "${destination}/"
 
 # prepare all fonts
 source $SYS/fonts
+# copy fontawesome
+rsync -a "$SYS/webfonts" "$destination/"
+
 # [[ ${#fonts} -gt 0 ]] && {
 #     rsync -a -W "$DIR/fonts/" "$destination/" }
 
@@ -469,6 +472,7 @@ publish_html() {
     dst=`calc_dest "$src" $ext`
 
     [[ "$FLOWTYPE" = "" ]] || includecss+=(flowtype.css)
+	[[ "$FONTAWESOME" = "" ]] || includecss+=(fontawesome-all.min.css)
 
     # render html
     act "Html rendering: $B $dst $r"
