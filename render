@@ -123,9 +123,6 @@ EOF
 
 <!-- Bootstrap -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link href="${baseurl}/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="${baseurl}/css/bootstrap-responsive.css" rel="stylesheet" />
-
 EOF
     }
 
@@ -155,33 +152,13 @@ EOF
 
 EOF
     }
-    # include all css files found in views/css
-    cssfound=`find $DIR/views/css -iname '*.css'`
-
-    for c in ${(f)cssfound}; do
-        includecss+=(${c##*/})
-    done
-
-
-    # include also generated css for fonts if present
-    [[ -f "${destination}"/css/custom.fonts.css ]] && includecss+=(custom.fonts.css)
-
 
     # add all css needed
+	# array is setup in prepare_extensions()
     for c in $includecss; do
-        act "+ css: $c"
-        func "<link href=\"${baseurl}/css/${c}\" rel=\"stylesheet\" />"
-
         cat <<EOF
     <link href="${baseurl}/css/${c}" rel="stylesheet" />
-
 EOF
-        if [[ -r "$DIR"/views/css/$c ]]; then
-            cp -a $DIR/views/css/$c "${destination}"/css/
-        elif [[ -r "$SYS"/css/${c} ]]; then
-            cp -a "$SYS"/css/${c} "${destination}"/css/
-        fi
-
     done
 
     # add the user configured header
@@ -201,20 +178,6 @@ EOF
         includejs+=(${j##*/})
     done
 
-    # insert and copy all js files
-    for j in $includejs; do
-        act "+ js:  $j"
-        cat <<EOF
-<script type="text/javascript" src="${baseurl}/js/$j"></script>
-EOF
-        if [[ -r "$DIR"/views/js/$j ]]; then
-            cp -f "$DIR"/views/js/$j "$destination"/js
-        elif [[ -r "$SYS"/js/$j ]]; then
-            cp -f "$SYS"/js/$j "$destination"/js
-        fi
-    done
-
-
     render_file "$DIR"/tmpl/footer.html
 
     # add any string argument to the footer
@@ -222,6 +185,25 @@ EOF
 
     # if test mode then render the test footer
     [[ "$CMD" = "test" ]] && render_test_footer
+
+
+    # insert all js files
+    for j in $includejs; do
+        cat <<EOF
+<script type="text/javascript" src="${baseurl}/js/$j"></script>
+EOF
+    done
+
+
+	# must go after jquery
+	[[ "$FULLPAGE" = "" ]] || {
+		cat <<EOF
+<script> \$(document).ready(function() { \$('#fullpage').fullpage({
+${FULLPAGE_OPTIONS}
+}
+); });</script>
+EOF
+	}
 
     [[ "$FLOWTYPE" = "" ]] || { # if there is flowtype.js then use it
 
@@ -400,6 +382,67 @@ calc_dest() {
     print $dst
 }
 
+prepare_extensions() {
+
+	# render the base skeleton dir tree
+	mkdir -p "$destination/css"
+	mkdir -p "$destination/js"
+	mkdir -p "$destination/img"
+
+    # include all css files found in views/css
+    cssfound=`find $DIR/views/css -iname '*.css'`
+    for c in ${(f)cssfound}; do
+        includecss+=(${c##*/})
+    done
+
+    # include also generated css for fonts if present
+    [[ -f "${destination}"/css/custom.fonts.css ]] &&
+		includecss+=(custom.fonts.css)
+
+
+	[[ "$BOOTSTRAP" = "" ]] || {
+		includecss+=(bootstrap.min.css bootstrap-responsive.css)
+		includejs+=(bootstrap.min.js html5.js)
+		rsync -a "$SYS"/img/*                        "$destination"/img/
+	}
+
+    [[ "$FLOWTYPE" = "" ]] || includecss+=(flowtype.css)
+
+	[[ "$FONTAWESOME" = "" ]] || {
+		includecss+=(fontawesome-all.min.css)
+		# copy fontawesome
+		rsync -a "$SYS/webfonts" "$destination/"
+	}
+
+	[[ "$FULLPAGE" = "" ]] || {
+		# TODO: check if jquery is needed by other extensions
+		includejs+=(jquery.min.js)
+		includecss+=(jquery.fullpage.min.css)
+		includejs+=(jquery.fullpage.min.js)
+	}
+
+    # copy all css files
+    for c in $includecss; do
+        act "+ css: $c"
+        if [[ -r "$DIR"/views/css/$c ]]; then
+            cp -a "$DIR"/views/css/$c "${destination}"/css/
+        elif [[ -r "$SYS"/css/${c} ]]; then
+            cp -a "$SYS"/css/${c} "${destination}"/css/
+        fi
+
+    done
+
+    # copy all js files
+    for j in $includejs; do
+        act "+ js:  $j"
+        if [[ -r "$DIR"/views/js/$j ]]; then
+            cp -f "$DIR"/views/js/$j "$destination"/js
+        elif [[ -r "$SYS"/js/$j ]]; then
+            cp -f "$SYS"/js/$j "$destination"/js
+        fi
+    done
+}
+
 #########
 # MAIN
 func MAIN
@@ -409,25 +452,7 @@ func MAIN
     act "Local test rendering inside test/"
     source $SYS/test }
 
-# render the base skeleton dir tree
-mkdir -p "$destination/css"
-mkdir -p "$destination/js"
-mkdir -p "$destination/img"
-
-[[ "$BOOTSTRAP" = "" ]] || {
-    #{ test -r "$destination"/css/bootstrap.css } || {
-    cp "$SYS"/css/bootstrap.css            "$destination"/css/
-    cp "$SYS"/img/*                        "$destination"/img/
-    cp "$SYS"/css/bootstrap.min.css        "$destination"/css/
-    cp "$SYS"/css/bootstrap-responsive.css "$destination"/css/
-    #}
-    cp "$SYS"/js/bootstrap.min.js          "$destination"/js/
-    cp "$SYS"/js/html5.js                 "$destination"/js/
-}
-
-
-
-
+prepare_extensions
 
 # copy to destination all subdirs in views/
 act -n "publishing all $B views $r ... "
@@ -440,8 +465,6 @@ rsync -a -W "$DIR/views/" "${destination}/"
 
 # prepare all fonts
 source $SYS/fonts
-# copy fontawesome
-rsync -a "$SYS/webfonts" "$destination/"
 
 # [[ ${#fonts} -gt 0 ]] && {
 #     rsync -a -W "$DIR/fonts/" "$destination/" }
@@ -471,9 +494,6 @@ publish_html() {
 
     dst=`calc_dest "$src" $ext`
 
-    [[ "$FLOWTYPE" = "" ]] || includecss+=(flowtype.css)
-	[[ "$FONTAWESOME" = "" ]] || includecss+=(fontawesome-all.min.css)
-
     # render html
     act "Html rendering: $B $dst $r"
 
@@ -489,13 +509,20 @@ EOF
     # don't forget the navbar
     render_file "$DIR"/tmpl/navbar.html >> $dst
 
-    [[ $BOOTSTRAP = 0 ]] || {
-        cat <<EOF >> $dst
-<p>&nbsp;</p>
-<div class="container-fluid">
+	extras=""
+	[[ "$FULLPAGE" = "" ]] || extras+=" id=\"fullpage\" "
+    if [[ $BOOTSTRAP = 0 ]]; then
+		cat <<EOF >> $dst
+<div $extras>
 <article>
 EOF
-    }
+	else
+        cat <<EOF >> $dst
+<p>&nbsp;</p>
+<div class="container-fluid" $extras>
+<article>
+EOF
+	fi
 
     # read meta commands
     cat ${src} | strip_meta | render_html >> $dst
@@ -514,7 +541,6 @@ EOF
     act "done"
 
 }
-
 
 
 # render all maildirs

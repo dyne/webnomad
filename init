@@ -138,18 +138,14 @@ WEB_ROOT=""
 # information that works also with twitter.
 TWITTER="@DyneOrg"
 
-#
-# Anything below is safe to leave untouched
-#
+# What file extension to use for html files
+EXTENSION=".html"
 
 # Comment to disable Bootstrap
 BOOTSTRAP=1
 
 # Comment to disable FontAwesome
 FONTAWESOME=1
-
-# What file extension to use for html files
-EXTENSION=".html"
 
 # What is the url for files in case indexing is used
 # this can be different from WEB_ROOT in order to serve
@@ -170,6 +166,42 @@ EXIF_CLEAN=1
 # EXIF_COMMENT=""
 # Automatically rotate the image according to EXIF information
 # EXIF_ROTATE=1
+
+# Uncomment to enable Fullpage.js
+# FULLPAGE=1
+# FULLPAGE_OPTIONS="
+		//Design
+		controlArrows: true,
+		verticalCentered: true,
+		sectionsColor : ['#ccc', '#fff'],
+		paddingTop: '3em',
+		paddingBottom: '10px',
+		fixedElements: '#header, .footer',
+		//Navigation
+		navigation: true,
+		navigationPosition: 'right',
+		showActiveTooltip: false,
+		slidesNavigation: false,
+		slidesNavPosition: 'bottom',
+		//Scrolling
+		scrollingSpeed: 700,
+		autoScrolling: true,
+		fitToSection: true,
+		scrollBar: true,
+		loopBottom: true,
+		loopTop: false,
+		loopHorizontal: true,
+		touchSensitivity: 15,
+		//Accessibility
+		keyboardScrolling: true,
+		animateAnchor: true,
+		recordHistory: false,
+		//Custom selectors
+		sectionSelector: '.section',
+		slideSelector: '.slide',
+		lazyLoading: true
+"
+
 EOF
 }
 
