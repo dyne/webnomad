@@ -197,8 +197,6 @@ EXIF_CLEAN=1
 		animateAnchor: true,
 		recordHistory: false,
 		//Custom selectors
-		sectionSelector: '.section',
-		slideSelector: '.slide',
 		lazyLoading: true
 "
 

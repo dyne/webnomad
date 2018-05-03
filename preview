@@ -45,6 +45,6 @@ while print - $views | inotifywait --fromfile - -q -r \
     -e modify -e create -e move -e delete \
     --timefmt "${TIME_FORMAT}" --format "${OUTPUT_FORMAT}"; do
     $SYS/render test
-    BROWSER_WINDOW_ID=$(xdotool search --onlyvisible --class $BROWSER)
-    xdotool key --window $BROWSER_WINDOW_ID 'CTRL+r'
+    # BROWSER_WINDOW_ID=$(xdotool search --onlyvisible --class $BROWSER)
+	# xdotool key --window $BROWSER_WINDOW_ID 'CTRL+r'
 done
